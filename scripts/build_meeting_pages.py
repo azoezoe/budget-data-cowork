@@ -72,6 +72,7 @@ def main() -> None:
             <option value="ok">ok</option>
             <option value="change_proposal">改 proposal_ID</option>
             <option value="change_image">改圖片</option>
+            <option value="needs_pairing">需重新配對</option>
             <option value="skip">不需匯入</option>
             <option value="unmatched_review">未配對待查</option>
           </select>
@@ -95,11 +96,11 @@ def main() -> None:
           </div>
           <div class="pairing-grid">
             <section>
-              <h3>沒有圖片網址的提案</h3>
+              <h3>文字待配對</h3>
               <div id="missingProposalList" class="pair-list"></div>
             </section>
             <section>
-              <h3>未配對圖片</h3>
+              <h3>圖片待配對</h3>
               <div id="unmatchedImageList" class="pair-list"></div>
             </section>
           </div>
@@ -128,6 +129,7 @@ def main() -> None:
             <input class="done-input" type="checkbox">
             確認完成
           </label>
+          <button class="wrong-image-button secondary" type="button">圖片錯誤，進配對池</button>
           <label>
             備註
             <textarea class="note-input" rows="2"></textarea>

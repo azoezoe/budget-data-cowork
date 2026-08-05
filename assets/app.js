@@ -12,6 +12,7 @@ const statusLabels = {
   ok: "ok",
   change_proposal: "改 proposal_ID",
   change_image: "改圖片",
+  needs_pairing: "需重新配對",
   skip: "不需匯入",
   unmatched_review: "未配對待查",
 };
@@ -66,6 +67,14 @@ function appendNote(row, text) {
   return existing ? `${existing}\n${text}` : text;
 }
 
+function imageCandidateKey(row) {
+  return `image:${rowKey(row)}`;
+}
+
+function detachedCandidateKey(row) {
+  return `detached:${rowKey(row)}`;
+}
+
 function saveEdit(row, patch) {
   const key = rowKey(row);
   state.edits[key] = { ...(state.edits[key] || {}), ...patch };
@@ -74,6 +83,7 @@ function saveEdit(row, patch) {
 }
 
 function outputStatus(raw, row) {
+  if (row.pair_pool && !splitUrls(row.pdf).length) return "needs_pairing";
   if (row.done) return "ok";
   return row.status || raw.status || "unchecked";
 }
@@ -87,7 +97,7 @@ function getFilteredRows() {
     const row = currentRow(raw);
     if (isMeetingValue(dataset) && !group.has(row.dataset)) return false;
     if (dataset && !isMeetingValue(dataset) && row.dataset !== dataset) return false;
-    if (status && row.status !== status) return false;
+    if (status && outputStatus(raw, row) !== status) return false;
     if (!query) return true;
     return [row.dataset, row.row_id, row.proposal_ID, row.content, (row.pdf || []).join("\n"), row.note]
       .join("\n")
@@ -138,6 +148,7 @@ function renderRows() {
     node.querySelector(".done-input").checked = Boolean(row.done || row.status === "ok");
     node.querySelector(".note-input").value = row.note || "";
     node.querySelector(".content-text").textContent = row.content || "";
+    node.querySelector(".wrong-image-button").hidden = !row.dataset.endsWith("_matched") || !splitUrls(row.pdf).length;
     renderImages(node.querySelector(".image-pane"), row);
 
     node.querySelector(".proposal-input").addEventListener("input", (event) => {
@@ -152,6 +163,9 @@ function renderRows() {
         done: event.target.checked,
         status: event.target.checked ? "ok" : raw.status || "unchecked",
       });
+    });
+    node.querySelector(".wrong-image-button").addEventListener("click", () => {
+      moveWrongImageToPool(raw);
     });
     node.querySelector(".note-input").addEventListener("input", (event) => {
       saveEdit(raw, { note: event.target.value });
@@ -220,6 +234,7 @@ function exportRows() {
       pdf: splitUrls(row.pdf),
       status: outputStatus(raw, row),
       done: Boolean(row.done),
+      pair_pool: Boolean(row.pair_pool),
       note: row.note || "",
     };
   });
@@ -232,6 +247,10 @@ function findRawByKey(key) {
 function matchingRows() {
   const group = new Set(selectedDatasetGroup());
   const groupRows = state.rows.filter((row) => group.has(row.dataset));
+  const detachedImages = groupRows.filter((raw) => {
+    const row = currentRow(raw);
+    return row.dataset.endsWith("_matched") && splitUrls(row.detached_pdf).length && !row.detached_used;
+  });
   return {
     missingProposals: groupRows.filter((raw) => {
       const row = currentRow(raw);
@@ -241,6 +260,7 @@ function matchingRows() {
       const row = currentRow(raw);
       return row.dataset.endsWith("_unmatch") && splitUrls(row.pdf).length && row.status !== "skip";
     }),
+    detachedImages,
   };
 }
 
@@ -250,9 +270,10 @@ function renderPairingPanel() {
   panel.hidden = !state.pairMode;
   if (!state.pairMode) return;
 
-  const { missingProposals, unmatchedImages } = matchingRows();
+  const { missingProposals, unmatchedImages, detachedImages } = matchingRows();
+  const imageCount = unmatchedImages.length + detachedImages.length;
   document.querySelector("#pairingSummary").textContent =
-    `${missingProposals.length} 筆提案缺圖，${unmatchedImages.length} 張未配對圖片`;
+    `${missingProposals.length} 筆文字待配對，${imageCount} 張圖片待配對`;
 
   const proposalList = document.querySelector("#missingProposalList");
   const imageList = document.querySelector("#unmatchedImageList");
@@ -275,7 +296,7 @@ function renderPairingPanel() {
 
   for (const raw of unmatchedImages) {
     const row = currentRow(raw);
-    const key = rowKey(raw);
+    const key = imageCandidateKey(raw);
     const button = document.createElement("button");
     button.type = "button";
     button.className = `pair-item image-choice ${state.selectedImageKey === key ? "selected" : ""}`;
@@ -293,26 +314,78 @@ function renderPairingPanel() {
     imageList.append(button);
   }
 
+  for (const raw of detachedImages) {
+    const row = currentRow(raw);
+    const key = detachedCandidateKey(raw);
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = `pair-item image-choice ${state.selectedImageKey === key ? "selected" : ""}`;
+    const image = document.createElement("img");
+    image.src = splitUrls(row.detached_pdf)[0];
+    image.loading = "lazy";
+    image.alt = "待重新配對圖片";
+    const span = document.createElement("span");
+    span.textContent = `原本配到 proposal_ID ${row.proposal_ID || ""}\n${splitUrls(row.detached_pdf).join("\n")}`;
+    button.append(image, span);
+    button.addEventListener("click", () => {
+      state.selectedImageKey = key;
+      renderPairingPanel();
+    });
+    imageList.append(button);
+  }
+
   document.querySelector("#applyPair").disabled = !state.selectedProposalKey || !state.selectedImageKey;
 }
 
 function applySelectedPair() {
   const proposal = findRawByKey(state.selectedProposalKey);
-  const imageRow = findRawByKey(state.selectedImageKey);
-  if (!proposal || !imageRow) return;
-  const imageUrls = splitUrls(currentRow(imageRow).pdf);
+  if (!proposal || !state.selectedImageKey) return;
+  const imageKey = state.selectedImageKey;
+  const isDetached = imageKey.startsWith("detached:");
+  const sourceKey = imageKey.replace(/^image:/, "").replace(/^detached:/, "");
+  const imageRow = findRawByKey(sourceKey);
+  if (!imageRow) return;
+  const imageUrls = isDetached ? splitUrls(currentRow(imageRow).detached_pdf) : splitUrls(currentRow(imageRow).pdf);
   const proposalId = currentRow(proposal).proposal_ID || "";
   saveEdit(proposal, {
     pdf: imageUrls,
     status: "change_image",
+    done: false,
+    pair_pool: false,
+    detached_used: proposal === imageRow && isDetached ? true : currentRow(proposal).detached_used,
     note: appendNote(proposal, `配對未配對圖片：${imageRow.dataset} #${imageRow.row_id}`),
   });
-  saveEdit(imageRow, {
-    status: "skip",
-    note: appendNote(imageRow, `已配對到 proposal_ID ${proposalId}：${proposal.dataset} #${proposal.row_id}`),
-  });
+  if (isDetached) {
+    saveEdit(imageRow, {
+      detached_used: true,
+      note: appendNote(imageRow, `原錯配圖片已配對到 proposal_ID ${proposalId}：${proposal.dataset} #${proposal.row_id}`),
+    });
+  } else {
+    saveEdit(imageRow, {
+      status: "skip",
+      note: appendNote(imageRow, `已配對到 proposal_ID ${proposalId}：${proposal.dataset} #${proposal.row_id}`),
+    });
+  }
   state.selectedProposalKey = "";
   state.selectedImageKey = "";
+  renderRows();
+}
+
+function moveWrongImageToPool(raw) {
+  const row = currentRow(raw);
+  const urls = splitUrls(row.pdf);
+  if (!urls.length) return;
+  saveEdit(raw, {
+    pdf: [],
+    detached_pdf: urls,
+    detached_used: false,
+    pair_pool: true,
+    done: false,
+    status: "change_image",
+    note: appendNote(raw, "圖片錯誤，已移入配對池"),
+  });
+  state.pairMode = true;
+  document.querySelector("#pairModeButton").classList.add("active");
   renderRows();
 }
 
@@ -372,6 +445,10 @@ async function init() {
     datasetFilter.value = meetingValue(datasetBase(state.datasets[0].name));
   }
 
+  if (initialMeeting) {
+    datasetFilter.closest("label").hidden = true;
+  }
+
   for (const selector of ["#datasetFilter", "#statusFilter", "#searchInput"]) {
     document.querySelector(selector).addEventListener("input", renderRows);
   }
@@ -389,7 +466,7 @@ async function init() {
     );
   });
   document.querySelector("#downloadCsv").addEventListener("click", () => {
-    const headers = ["dataset", "row_id", "proposal_ID", "pdf", "status", "done", "note"];
+    const headers = ["dataset", "row_id", "proposal_ID", "pdf", "status", "done", "pair_pool", "note"];
     const rows = exportRows().map((row) => headers.map((header) => csvEscape(row[header])).join(","));
     download("review-output.csv", `${headers.join(",")}\n${rows.join("\n")}\n`, "text/csv;charset=utf-8");
   });
