@@ -6,7 +6,7 @@ Static review pages for budget proposal gazette image matching.
 
 Open `index.html` locally or publish this repository with GitHub Pages.
 
-Reviewers open one dataset URL, edit rows in the browser, and download `review-output.jsonl`.
+Reviewers open one meeting page, edit rows in the browser, and download `review-output.jsonl`.
 Send that file back for import. CSV download is only a backup for manual checks.
 
 Each JSONL line is one reviewed row:
@@ -27,6 +27,6 @@ Use the checkbox when a row is confirmed. If proposal_ID or image URL is edited,
 the page marks the row status automatically.
 
 Pairing mode shows proposal rows without image URLs next to unmatched images from
-the same dataset group. Select one proposal and one image, then apply the pair.
+the same meeting. Select one proposal and one image, then apply the pair.
 
 The browser keeps draft edits in local storage until the reviewer exports or clears them.

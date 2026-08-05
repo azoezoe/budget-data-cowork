@@ -1,0 +1,154 @@
+#!/usr/bin/env python3
+"""Build one static review page per meeting dataset group."""
+
+from __future__ import annotations
+
+import html
+import json
+from pathlib import Path
+
+
+ROOT = Path(__file__).resolve().parents[1]
+DATA_PATH = ROOT / "data" / "gazette-review.json"
+OUTPUT_DIR = ROOT / "meetings"
+
+
+def dataset_base(name: str) -> str:
+    for suffix in ("_matched", "_unmatch"):
+        if name.endswith(suffix):
+            return name[: -len(suffix)]
+    return name
+
+
+def main() -> None:
+    payload = json.loads(DATA_PATH.read_text(encoding="utf-8"))
+    groups: dict[str, dict[str, str]] = {}
+    for dataset in payload["datasets"]:
+        base = dataset_base(dataset["name"])
+        groups.setdefault(
+            base,
+            {
+                "base": base,
+                "date": dataset.get("date", ""),
+                "committee": dataset.get("committee", ""),
+            },
+        )
+
+    OUTPUT_DIR.mkdir(exist_ok=True)
+    for group in groups.values():
+        title = f"{group['date']} {group['committee']} 公報校對"
+        page = f"""<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{html.escape(title)}</title>
+    <link rel="stylesheet" href="../assets/styles.css">
+  </head>
+  <body>
+    <header class="topbar">
+      <div>
+        <h1>預算公報校對</h1>
+        <p id="summary">載入中...</p>
+      </div>
+      <div class="actions">
+        <button id="downloadJsonl" type="button">下載本組 JSONL</button>
+        <button id="downloadCsv" type="button">下載本組 CSV</button>
+        <button id="clearDraft" type="button" class="secondary">清除本機草稿</button>
+      </div>
+    </header>
+
+    <main>
+      <aside class="sidebar">
+        <label>
+          會議
+          <select id="datasetFilter"></select>
+        </label>
+        <label>
+          狀態
+          <select id="statusFilter">
+            <option value="">全部</option>
+            <option value="unchecked">未校對</option>
+            <option value="ok">ok</option>
+            <option value="change_proposal">改 proposal_ID</option>
+            <option value="change_image">改圖片</option>
+            <option value="skip">不需匯入</option>
+            <option value="unmatched_review">未配對待查</option>
+          </select>
+        </label>
+        <label>
+          搜尋
+          <input id="searchInput" type="search" placeholder="proposal_ID / 內容 / 圖片網址">
+        </label>
+        <button id="pairModeButton" type="button" class="wide-button">配對模式</button>
+        <div id="datasetInfo" class="info"></div>
+      </aside>
+
+      <section class="content">
+        <section id="pairingPanel" class="pairing-panel" hidden>
+          <div class="pairing-head">
+            <div>
+              <h2>配對模式</h2>
+              <p id="pairingSummary"></p>
+            </div>
+            <button id="applyPair" type="button">配對選取項目</button>
+          </div>
+          <div class="pairing-grid">
+            <section>
+              <h3>沒有圖片網址的提案</h3>
+              <div id="missingProposalList" class="pair-list"></div>
+            </section>
+            <section>
+              <h3>未配對圖片</h3>
+              <div id="unmatchedImageList" class="pair-list"></div>
+            </section>
+          </div>
+        </section>
+        <div id="rows" class="rows"></div>
+      </section>
+    </main>
+
+    <template id="rowTemplate">
+      <article class="review-row">
+        <div class="image-pane"></div>
+        <div class="edit-pane">
+          <div class="row-head">
+            <span class="dataset"></span>
+            <span class="row-id"></span>
+          </div>
+          <label>
+            proposal_ID
+            <input class="proposal-input" type="text">
+          </label>
+          <label>
+            pdf 圖片網址
+            <textarea class="pdf-input" rows="3"></textarea>
+          </label>
+          <label class="checkbox-label">
+            <input class="done-input" type="checkbox">
+            確認完成
+          </label>
+          <label>
+            備註
+            <textarea class="note-input" rows="2"></textarea>
+          </label>
+          <div class="content-text"></div>
+        </div>
+      </article>
+    </template>
+
+    <script>
+      window.BUDGET_REVIEW_DATA = "../data/gazette-review.json";
+      window.BUDGET_REVIEW_MEETING = "{html.escape(group['base'])}";
+    </script>
+    <script src="../assets/app.js"></script>
+  </body>
+</html>
+"""
+        (OUTPUT_DIR / f"{group['base']}.html").write_text(page, encoding="utf-8")
+
+    print(f"wrote {len(groups)} meeting pages")
+
+
+if __name__ == "__main__":
+    main()

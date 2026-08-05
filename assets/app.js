@@ -17,6 +17,8 @@ const statusLabels = {
 };
 
 const storageKey = "budget-gazette-review-edits:v1";
+const dataPath = window.BUDGET_REVIEW_DATA || "data/gazette-review.json";
+const initialMeeting = window.BUDGET_REVIEW_MEETING || "";
 
 function splitUrls(value) {
   if (Array.isArray(value)) return value.filter(Boolean);
@@ -38,10 +40,24 @@ function datasetBase(name) {
   return String(name || "").replace(/_(matched|unmatch)$/, "");
 }
 
+function isMeetingValue(value) {
+  return String(value || "").startsWith("meeting:");
+}
+
+function meetingValue(base) {
+  return `meeting:${base}`;
+}
+
+function selectedBase() {
+  const selected = document.querySelector("#datasetFilter").value;
+  if (isMeetingValue(selected)) return selected.slice("meeting:".length);
+  return datasetBase(selected);
+}
+
 function selectedDatasetGroup() {
   const selected = document.querySelector("#datasetFilter").value;
   if (!selected) return state.datasets.map((dataset) => dataset.name);
-  const base = datasetBase(selected);
+  const base = selectedBase();
   return state.datasets.filter((dataset) => datasetBase(dataset.name) === base).map((dataset) => dataset.name);
 }
 
@@ -66,9 +82,11 @@ function getFilteredRows() {
   const dataset = document.querySelector("#datasetFilter").value;
   const status = document.querySelector("#statusFilter").value;
   const query = document.querySelector("#searchInput").value.trim().toLowerCase();
+  const group = new Set(isMeetingValue(dataset) ? selectedDatasetGroup() : []);
   return state.rows.filter((raw) => {
     const row = currentRow(raw);
-    if (dataset && row.dataset !== dataset) return false;
+    if (isMeetingValue(dataset) && !group.has(row.dataset)) return false;
+    if (dataset && !isMeetingValue(dataset) && row.dataset !== dataset) return false;
     if (status && row.status !== status) return false;
     if (!query) return true;
     return [row.dataset, row.row_id, row.proposal_ID, row.content, (row.pdf || []).join("\n"), row.note]
@@ -149,9 +167,10 @@ function renderRows() {
 }
 
 function updateSummary() {
-  const total = state.rows.length;
-  const reviewed = state.rows.filter((row) => currentRow(row).status !== "unchecked").length;
-  document.querySelector("#summary").textContent = `${state.datasets.length} 個資料集，${total} 筆，已標狀態 ${reviewed} 筆`;
+  const datasetFilter = document.querySelector("#datasetFilter");
+  const rows = datasetFilter ? getFilteredRows() : state.rows;
+  const reviewed = rows.filter((row) => currentRow(row).status !== "unchecked").length;
+  document.querySelector("#summary").textContent = `目前頁面 ${rows.length} 筆，已標狀態 ${reviewed} 筆`;
 }
 
 function updateDatasetInfo() {
@@ -161,15 +180,20 @@ function updateDatasetInfo() {
     info.textContent = "選擇單一會議後，這裡會顯示來源資訊。";
     return;
   }
-  const dataset = state.datasets.find((item) => item.name === selected);
+  const group = isMeetingValue(selected)
+    ? state.datasets.filter((item) => selectedDatasetGroup().includes(item.name))
+    : state.datasets.filter((item) => item.name === selected);
+  const dataset = group[0];
   if (!dataset) return;
+  const rowCount = group.reduce((sum, item) => sum + Number(item.row_count || 0), 0);
+  const htmlFiles = [...new Set(group.flatMap((item) => item.html_file || []))];
   info.textContent = [
     `來源列號：${dataset.source_sheet_row || ""}`,
     `日期：${dataset.date || ""}`,
     `委員會：${dataset.committee || ""}`,
-    `資料列數：${dataset.row_count}`,
+    `資料列數：${rowCount}`,
     `ppg_url：${dataset.ppg_url || ""}`,
-    `html_file：${(dataset.html_file || []).join(" ")}`,
+    `html_file：${htmlFiles.join(" ")}`,
   ].join("\n");
 }
 
@@ -295,10 +319,18 @@ function applySelectedPair() {
 function updateUrlDataset() {
   const selectedDataset = document.querySelector("#datasetFilter").value;
   const url = new URL(window.location.href);
-  if (selectedDataset) {
+  if (isMeetingValue(selectedDataset) && initialMeeting && selectedBase() === initialMeeting) {
+    url.searchParams.delete("meeting");
+    url.searchParams.delete("dataset");
+  } else if (isMeetingValue(selectedDataset)) {
+    url.searchParams.set("meeting", selectedBase());
+    url.searchParams.delete("dataset");
+  } else if (selectedDataset) {
     url.searchParams.set("dataset", selectedDataset);
+    url.searchParams.delete("meeting");
   } else {
     url.searchParams.delete("dataset");
+    url.searchParams.delete("meeting");
   }
   window.history.replaceState({}, "", url);
 }
@@ -309,7 +341,7 @@ function csvEscape(value) {
 }
 
 async function init() {
-  const response = await fetch("data/gazette-review.json");
+  const response = await fetch(dataPath);
   const payload = await response.json();
   state.datasets = payload.datasets;
   state.rows = payload.rows;
@@ -317,14 +349,27 @@ async function init() {
 
   const datasetFilter = document.querySelector("#datasetFilter");
   datasetFilter.append(new Option("全部", ""));
+  const bases = [...new Set(state.datasets.map((dataset) => datasetBase(dataset.name)))];
+  for (const base of bases) {
+    const group = state.datasets.filter((dataset) => datasetBase(dataset.name) === base);
+    const first = group[0];
+    const rowCount = group.reduce((sum, dataset) => sum + Number(dataset.row_count || 0), 0);
+    datasetFilter.append(
+      new Option(`${first.date} ${first.committee} ${base} (${rowCount})`, meetingValue(base)),
+    );
+  }
   for (const dataset of state.datasets) {
     datasetFilter.append(new Option(`${dataset.name} (${dataset.row_count})`, dataset.name));
   }
-  const requestedDataset = new URLSearchParams(window.location.search).get("dataset");
+  const params = new URLSearchParams(window.location.search);
+  const requestedMeeting = params.get("meeting") || initialMeeting;
+  const requestedDataset = params.get("dataset");
   if (requestedDataset && state.datasets.some((dataset) => dataset.name === requestedDataset)) {
     datasetFilter.value = requestedDataset;
+  } else if (requestedMeeting && bases.includes(requestedMeeting)) {
+    datasetFilter.value = meetingValue(requestedMeeting);
   } else if (state.datasets.length) {
-    datasetFilter.value = state.datasets[0].name;
+    datasetFilter.value = meetingValue(datasetBase(state.datasets[0].name));
   }
 
   for (const selector of ["#datasetFilter", "#statusFilter", "#searchInput"]) {
