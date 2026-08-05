@@ -2,6 +2,9 @@ const state = {
   datasets: [],
   rows: [],
   edits: {},
+  pairMode: false,
+  selectedProposalKey: "",
+  selectedImageKey: "",
 };
 
 const statusLabels = {
@@ -31,11 +34,32 @@ function currentRow(row) {
   return { ...row, ...(state.edits[rowKey(row)] || {}) };
 }
 
+function datasetBase(name) {
+  return String(name || "").replace(/_(matched|unmatch)$/, "");
+}
+
+function selectedDatasetGroup() {
+  const selected = document.querySelector("#datasetFilter").value;
+  if (!selected) return state.datasets.map((dataset) => dataset.name);
+  const base = datasetBase(selected);
+  return state.datasets.filter((dataset) => datasetBase(dataset.name) === base).map((dataset) => dataset.name);
+}
+
+function appendNote(row, text) {
+  const existing = currentRow(row).note || "";
+  return existing ? `${existing}\n${text}` : text;
+}
+
 function saveEdit(row, patch) {
   const key = rowKey(row);
   state.edits[key] = { ...(state.edits[key] || {}), ...patch };
   localStorage.setItem(storageKey, JSON.stringify(state.edits));
   updateSummary();
+}
+
+function outputStatus(raw, row) {
+  if (row.done) return "ok";
+  return row.status || raw.status || "unchecked";
 }
 
 function getFilteredRows() {
@@ -93,20 +117,23 @@ function renderRows() {
     node.querySelector(".row-id").textContent = `#${row.row_id}`;
     node.querySelector(".proposal-input").value = row.proposal_ID || "";
     node.querySelector(".pdf-input").value = splitUrls(row.pdf).join("\n");
-    node.querySelector(".status-input").value = row.status || "unchecked";
+    node.querySelector(".done-input").checked = Boolean(row.done || row.status === "ok");
     node.querySelector(".note-input").value = row.note || "";
     node.querySelector(".content-text").textContent = row.content || "";
     renderImages(node.querySelector(".image-pane"), row);
 
     node.querySelector(".proposal-input").addEventListener("input", (event) => {
-      saveEdit(raw, { proposal_ID: event.target.value });
+      saveEdit(raw, { proposal_ID: event.target.value, status: "change_proposal" });
     });
     node.querySelector(".pdf-input").addEventListener("input", (event) => {
-      saveEdit(raw, { pdf: splitUrls(event.target.value) });
+      saveEdit(raw, { pdf: splitUrls(event.target.value), status: "change_image" });
       renderImages(node.querySelector(".image-pane"), currentRow(raw));
     });
-    node.querySelector(".status-input").addEventListener("change", (event) => {
-      saveEdit(raw, { status: event.target.value });
+    node.querySelector(".done-input").addEventListener("change", (event) => {
+      saveEdit(raw, {
+        done: event.target.checked,
+        status: event.target.checked ? "ok" : raw.status || "unchecked",
+      });
     });
     node.querySelector(".note-input").addEventListener("input", (event) => {
       saveEdit(raw, { note: event.target.value });
@@ -118,6 +145,7 @@ function renderRows() {
   }
   updateDatasetInfo();
   updateUrlDataset();
+  renderPairingPanel();
 }
 
 function updateSummary() {
@@ -157,7 +185,8 @@ function download(filename, content, type) {
 
 function exportRows() {
   const selectedDataset = document.querySelector("#datasetFilter").value;
-  const rows = selectedDataset ? state.rows.filter((row) => row.dataset === selectedDataset) : state.rows;
+  const group = new Set(selectedDataset ? selectedDatasetGroup() : state.datasets.map((dataset) => dataset.name));
+  const rows = state.rows.filter((row) => group.has(row.dataset));
   return rows.map((raw) => {
     const row = currentRow(raw);
     return {
@@ -165,10 +194,102 @@ function exportRows() {
       row_id: row.row_id,
       proposal_ID: row.proposal_ID || "",
       pdf: splitUrls(row.pdf),
-      status: row.status || "unchecked",
+      status: outputStatus(raw, row),
+      done: Boolean(row.done),
       note: row.note || "",
     };
   });
+}
+
+function findRawByKey(key) {
+  return state.rows.find((row) => rowKey(row) === key);
+}
+
+function matchingRows() {
+  const group = new Set(selectedDatasetGroup());
+  const groupRows = state.rows.filter((row) => group.has(row.dataset));
+  return {
+    missingProposals: groupRows.filter((raw) => {
+      const row = currentRow(raw);
+      return row.dataset.endsWith("_matched") && !splitUrls(row.pdf).length && row.status !== "skip";
+    }),
+    unmatchedImages: groupRows.filter((raw) => {
+      const row = currentRow(raw);
+      return row.dataset.endsWith("_unmatch") && splitUrls(row.pdf).length && row.status !== "skip";
+    }),
+  };
+}
+
+function renderPairingPanel() {
+  const panel = document.querySelector("#pairingPanel");
+  if (!panel) return;
+  panel.hidden = !state.pairMode;
+  if (!state.pairMode) return;
+
+  const { missingProposals, unmatchedImages } = matchingRows();
+  document.querySelector("#pairingSummary").textContent =
+    `${missingProposals.length} 筆提案缺圖，${unmatchedImages.length} 張未配對圖片`;
+
+  const proposalList = document.querySelector("#missingProposalList");
+  const imageList = document.querySelector("#unmatchedImageList");
+  proposalList.textContent = "";
+  imageList.textContent = "";
+
+  for (const raw of missingProposals) {
+    const row = currentRow(raw);
+    const key = rowKey(raw);
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = `pair-item ${state.selectedProposalKey === key ? "selected" : ""}`;
+    button.innerHTML = `<strong>${row.proposal_ID || "(無 proposal_ID)"}</strong><span>${row.content || ""}</span>`;
+    button.addEventListener("click", () => {
+      state.selectedProposalKey = key;
+      renderPairingPanel();
+    });
+    proposalList.append(button);
+  }
+
+  for (const raw of unmatchedImages) {
+    const row = currentRow(raw);
+    const key = rowKey(raw);
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = `pair-item image-choice ${state.selectedImageKey === key ? "selected" : ""}`;
+    const image = document.createElement("img");
+    image.src = splitUrls(row.pdf)[0];
+    image.loading = "lazy";
+    image.alt = "未配對圖片";
+    const span = document.createElement("span");
+    span.textContent = row.content || splitUrls(row.pdf).join("\n");
+    button.append(image, span);
+    button.addEventListener("click", () => {
+      state.selectedImageKey = key;
+      renderPairingPanel();
+    });
+    imageList.append(button);
+  }
+
+  document.querySelector("#applyPair").disabled = !state.selectedProposalKey || !state.selectedImageKey;
+}
+
+function applySelectedPair() {
+  const proposal = findRawByKey(state.selectedProposalKey);
+  const imageRow = findRawByKey(state.selectedImageKey);
+  if (!proposal || !imageRow) return;
+  const imageUrls = splitUrls(currentRow(imageRow).pdf);
+  const proposalId = currentRow(proposal).proposal_ID || "";
+  saveEdit(proposal, {
+    pdf: imageUrls,
+    status: "change_image",
+    note: appendNote(proposal, `配對未配對圖片：${imageRow.dataset} #${imageRow.row_id}`),
+  });
+  saveEdit(imageRow, {
+    status: "skip",
+    note: appendNote(imageRow, `已配對到 proposal_ID ${proposalId}：${proposal.dataset} #${proposal.row_id}`),
+  });
+  state.selectedProposalKey = "";
+  state.selectedImageKey = "";
+  renderRows();
 }
 
 function updateUrlDataset() {
@@ -209,6 +330,12 @@ async function init() {
   for (const selector of ["#datasetFilter", "#statusFilter", "#searchInput"]) {
     document.querySelector(selector).addEventListener("input", renderRows);
   }
+  document.querySelector("#pairModeButton").addEventListener("click", () => {
+    state.pairMode = !state.pairMode;
+    document.querySelector("#pairModeButton").classList.toggle("active", state.pairMode);
+    renderPairingPanel();
+  });
+  document.querySelector("#applyPair").addEventListener("click", applySelectedPair);
   document.querySelector("#downloadJsonl").addEventListener("click", () => {
     download(
       "review-output.jsonl",
@@ -217,7 +344,7 @@ async function init() {
     );
   });
   document.querySelector("#downloadCsv").addEventListener("click", () => {
-    const headers = ["dataset", "row_id", "proposal_ID", "pdf", "status", "note"];
+    const headers = ["dataset", "row_id", "proposal_ID", "pdf", "status", "done", "note"];
     const rows = exportRows().map((row) => headers.map((header) => csvEscape(row[header])).join(","));
     download("review-output.csv", `${headers.join(",")}\n${rows.join("\n")}\n`, "text/csv;charset=utf-8");
   });

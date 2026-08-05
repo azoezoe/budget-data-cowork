@@ -55,6 +55,21 @@ button.secondary {
   background: #6b7280;
 }
 
+button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.wide-button {
+  width: 100%;
+  margin-top: 2px;
+  margin-bottom: 14px;
+}
+
+.wide-button.active {
+  background: #0f766e;
+}
+
 .actions {
   display: flex;
   flex-wrap: wrap;
@@ -98,8 +113,24 @@ textarea {
   font-weight: 400;
 }
 
+input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+}
+
 textarea {
   resize: vertical;
+}
+
+.checkbox-label {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  width: fit-content;
+  padding: 8px 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  background: #f8fafc;
 }
 
 .info {
@@ -116,6 +147,91 @@ textarea {
 .rows {
   display: grid;
   gap: 14px;
+}
+
+.pairing-panel {
+  margin-bottom: 18px;
+  padding: 14px;
+  border: 1px solid #b7c7d8;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.pairing-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.pairing-head h2 {
+  margin: 0 0 4px;
+  font-size: 18px;
+}
+
+.pairing-head p {
+  color: #64748b;
+  font-size: 13px;
+}
+
+.pairing-grid {
+  display: grid;
+  grid-template-columns: minmax(280px, 1fr) minmax(320px, 1fr);
+  gap: 14px;
+}
+
+.pairing-grid h3 {
+  margin: 0 0 8px;
+  font-size: 14px;
+}
+
+.pair-list {
+  display: grid;
+  gap: 8px;
+  max-height: 70vh;
+  overflow: auto;
+  padding-right: 4px;
+}
+
+.pair-item {
+  display: grid;
+  gap: 6px;
+  width: 100%;
+  border: 1px solid #d8dee8;
+  border-radius: 6px;
+  padding: 10px;
+  background: #f8fafc;
+  color: #16202a;
+  text-align: left;
+}
+
+.pair-item strong {
+  color: #0f766e;
+}
+
+.pair-item span {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 5;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.pair-item.selected {
+  border-color: #0f766e;
+  box-shadow: 0 0 0 2px rgba(15, 118, 110, 0.16);
+  background: #ecfdf5;
+}
+
+.image-choice img {
+  width: 100%;
+  max-height: 260px;
+  object-fit: contain;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 4px;
 }
 
 .review-row {
@@ -196,7 +312,9 @@ textarea {
 @media (max-width: 920px) {
   .topbar,
   main,
-  .review-row {
+  .review-row,
+  .pairing-grid,
+  .pairing-head {
     display: block;
   }
 
