@@ -103,6 +103,10 @@ def main() -> None:
               <div id="missingProposalList" class="pair-list"></div>
             </section>
             <section>
+              <h3>文字已配對</h3>
+              <div id="pairedProposalList" class="pair-list"></div>
+            </section>
+            <section>
               <h3>圖片待配對</h3>
               <div id="unmatchedImageList" class="pair-list"></div>
             </section>
@@ -146,7 +150,7 @@ def main() -> None:
       window.BUDGET_REVIEW_DATA = "../data/gazette-review.json";
       window.BUDGET_REVIEW_MEETING = "{html.escape(group['base'])}";
     </script>
-    <script src="../assets/app.js?v=20260805-2"></script>
+    <script src="../assets/app.js?v=20260805-3"></script>
   </body>
 </html>
 """

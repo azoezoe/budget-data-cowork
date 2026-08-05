@@ -282,6 +282,10 @@ function matchingRows() {
       const row = currentRow(raw);
       return row.dataset.endsWith("_matched") && !splitUrls(row.pdf).length && outputStatus(raw, row) !== "skip";
     }),
+    pairedProposals: rows.filter((raw) => {
+      const row = currentRow(raw);
+      return row.dataset.endsWith("_matched") && Boolean(row.paired_from_pool) && splitUrls(row.pdf).length && outputStatus(raw, row) !== "skip";
+    }),
     unmatchedImages: rows.filter((raw) => {
       const row = currentRow(raw);
       return row.dataset.endsWith("_unmatch") && splitUrls(row.pdf).length && outputStatus(raw, row) !== "skip";
@@ -297,28 +301,41 @@ function renderPairingPanel() {
   panel.hidden = pending > 0;
   if (pending > 0) return;
 
-  const { missingProposals, unmatchedImages, detachedImages } = matchingRows();
+  const { missingProposals, pairedProposals, unmatchedImages, detachedImages } = matchingRows();
   const imageCount = unmatchedImages.length + detachedImages.length;
   document.querySelector("#pairingSummary").textContent =
-    `${missingProposals.length} 筆文字待配對，${imageCount} 張圖片待配對`;
+    `${missingProposals.length} 筆文字待配對，${pairedProposals.length} 筆文字已配對，${imageCount} 張圖片待配對`;
 
   const proposalList = document.querySelector("#missingProposalList");
+  const pairedProposalList = document.querySelector("#pairedProposalList");
   const imageList = document.querySelector("#unmatchedImageList");
   proposalList.textContent = "";
+  pairedProposalList.textContent = "";
   imageList.textContent = "";
 
-  for (const raw of missingProposals) {
+  function appendProposalChoice(raw, container, paired = false) {
     const row = currentRow(raw);
     const key = rowKey(raw);
     const button = document.createElement("button");
     button.type = "button";
     button.className = `pair-item ${state.selectedProposalKey === key ? "selected" : ""}`;
-    button.innerHTML = `<strong>${row.proposal_ID || "(無 proposal_ID)"}</strong><span>${row.content || ""}</span>`;
+    const pdfCount = splitUrls(row.pdf).length;
+    button.innerHTML = paired
+      ? `<strong>${row.proposal_ID || "(無 proposal_ID)"} 已配 ${pdfCount} 張</strong><span>${row.content || ""}</span>`
+      : `<strong>${row.proposal_ID || "(無 proposal_ID)"}</strong><span>${row.content || ""}</span>`;
     button.addEventListener("click", () => {
       state.selectedProposalKey = key;
       renderPairingPanel();
     });
-    proposalList.append(button);
+    container.append(button);
+  }
+
+  for (const raw of missingProposals) {
+    appendProposalChoice(raw, proposalList);
+  }
+
+  for (const raw of pairedProposals) {
+    appendProposalChoice(raw, pairedProposalList, true);
   }
 
   for (const raw of unmatchedImages) {
@@ -373,12 +390,14 @@ function applySelectedPair() {
   const imageRow = findRawByKey(sourceKey);
   if (!imageRow) return;
   const imageUrls = isDetached ? splitUrls(currentRow(imageRow).detached_pdf) : splitUrls(currentRow(imageRow).pdf);
+  const currentProposal = currentRow(proposal);
+  const nextImageUrls = [...new Set([...splitUrls(currentProposal.pdf), ...imageUrls])];
   const proposalId = currentRow(proposal).proposal_ID || "";
   const pairNote = document.querySelector("#pairNoteInput")?.value.trim() || "";
   const sourceNote = `配對圖片來源：${imageRow.dataset} #${imageRow.row_id}`;
   const reviewerNote = pairNote ? `配對註解：${pairNote}` : "";
   saveEdit(proposal, {
-    pdf: imageUrls,
+    pdf: nextImageUrls,
     status: "change_image",
     done: false,
     pair_pool: false,
@@ -394,7 +413,7 @@ function applySelectedPair() {
       note: appendNote(imageRow, [`已配對到 proposal_ID ${proposalId}：${proposal.dataset} #${proposal.row_id}`, reviewerNote].filter(Boolean).join("\n")),
     });
   }
-  state.selectedProposalKey = "";
+  state.selectedImageKey = "";
   const noteInput = document.querySelector("#pairNoteInput");
   if (noteInput) noteInput.value = "";
   renderRows();
