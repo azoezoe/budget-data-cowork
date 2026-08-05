@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light">
+    <title>財政委員會議事錄校對</title>
+    <link rel="stylesheet" href="../assets/minutes.css">
+  </head>
+  <body>
+    <header class="appbar">
+      <div class="brand-block">
+        <span class="product-mark">議事錄校對</span>
+        <div>
+          <h1 id="meetingTitle">第11屆第5會期財政委員會第16次全體委員會議</h1>
+          <p id="meetingMeta">載入中</p>
+        </div>
+      </div>
+      <div class="progress-block" aria-live="polite">
+        <div class="progress-copy"><strong id="progressText">0 / 0</strong><span>已確認</span></div>
+        <div class="progress-track"><span id="progressBar"></span></div>
+      </div>
+      <div class="toolbar">
+        <button id="downloadJsonl" class="icon-command" type="button" title="下載 JSONL">
+          <i data-lucide="braces"></i><span>JSONL</span>
+        </button>
+        <button id="downloadCsv" class="icon-command" type="button" title="下載 CSV">
+          <i data-lucide="download"></i><span>CSV</span>
+        </button>
+        <button id="clearDraft" class="icon-button" type="button" title="清除本機草稿" aria-label="清除本機草稿">
+          <i data-lucide="rotate-ccw"></i>
+        </button>
+      </div>
+    </header>
+
+    <main class="workspace">
+      <aside class="queue-panel">
+        <div class="reviewer-field">
+          <label for="reviewerInput">校對人</label>
+          <input id="reviewerInput" type="text" autocomplete="name" placeholder="填寫姓名">
+        </div>
+        <div id="filterTabs" class="segmented filter-tabs" aria-label="資料篩選">
+          <button type="button" data-filter="pending" class="active">待判斷</button>
+          <button type="button" data-filter="amend">要修正</button>
+          <button type="button" data-filter="done">已處理</button>
+          <button type="button" data-filter="all">全部</button>
+        </div>
+        <label class="search-box" for="searchInput">
+          <i data-lucide="search"></i>
+          <input id="searchInput" type="search" placeholder="搜尋案號、部會或內容">
+        </label>
+        <div class="queue-summary">
+          <button id="fixYears" type="button" class="bulk-fix"><i data-lucide="wand-sparkles"></i><span id="yearFixLabel">修正年度</span></button>
+          <button id="checklistButton" type="button" class="icon-button small" title="開啟校對清單" aria-label="開啟校對清單"><i data-lucide="list-checks"></i></button>
+        </div>
+        <nav id="rowList" class="row-list" aria-label="提案清單"></nav>
+      </aside>
+
+      <section class="source-panel">
+        <div class="source-toolbar">
+          <div class="source-title"><i data-lucide="book-open"></i><strong>原始議事錄</strong></div>
+          <div class="source-actions">
+            <button id="addFromSelection" class="selection-command" type="button"><i data-lucide="text-select"></i>選取文字新增</button>
+            <button id="addBlankProposal" class="icon-button small" type="button" title="新增空白提案" aria-label="新增空白提案"><i data-lucide="plus"></i></button>
+            <button id="locateCurrent" class="icon-button small" type="button" title="在原文中定位目前提案" aria-label="在原文中定位目前提案"><i data-lucide="locate-fixed"></i></button>
+          </div>
+          <div class="source-links">
+            <a id="docLink" href="#" target="_blank" rel="noreferrer"><i data-lucide="download"></i>DOC</a>
+            <a id="minutesLink" href="#" target="_blank" rel="noreferrer"><i data-lucide="external-link"></i>另開 HTML</a>
+            <a id="ppgLink" href="#" target="_blank" rel="noreferrer"><i data-lucide="external-link"></i>會議資料</a>
+          </div>
+        </div>
+        <section id="originalView" class="original-view">
+          <div class="viewer-status"><i data-lucide="mouse-pointer-2"></i><span id="sourceLocation">可自由捲動、選取原文</span></div>
+          <iframe id="sourceFrame" title="原始議事錄"></iframe>
+        </section>
+      </section>
+
+      <aside class="inspector-panel">
+        <div class="inspector-head">
+          <div>
+            <span id="rowPosition" class="eyebrow"></span>
+            <h2 id="caseLabel">案號</h2>
+          </div>
+          <div id="issueChips" class="issue-chips"></div>
+        </div>
+
+        <section class="current-proposal">
+          <div id="sectionLabel" class="section-label"></div>
+          <article id="proposalContent" class="proposal-content"></article>
+          <details class="source-context"><summary>段落脈絡</summary><div id="contextCallout" class="context-callout"></div></details>
+        </section>
+
+        <section id="attentionPanel" class="attention-panel" hidden></section>
+
+        <fieldset class="review-decision">
+          <legend>校對判斷</legend>
+          <div id="reviewDecisionControl" class="segmented decision-control">
+            <button type="button" data-decision="correct"><i data-lucide="check"></i>無誤</button>
+            <button type="button" data-decision="amend"><i data-lucide="pencil"></i>要修正</button>
+            <button type="button" data-decision="delete"><i data-lucide="trash-2"></i>刪除</button>
+            <button type="button" data-decision="add"><i data-lucide="plus"></i>新增</button>
+          </div>
+        </fieldset>
+        <label id="correctionBlock" class="correction-block" hidden>要改哪裡<textarea id="correctionNote" rows="3" placeholder="欄位、正確內容或交接說明"></textarea></label>
+
+        <div class="field-grid three">
+          <label>序號<input data-field="序號" type="text"></label>
+          <label>預算年度<div class="input-action"><input data-field="預算年度" inputmode="numeric" type="text"><button id="fixCurrentYear" type="button" title="設為 115">115</button></div></label>
+          <label>result<select data-field="result"><option value="">未確認</option><option value="通過">通過</option><option value="保留">保留</option></select></label>
+        </div>
+
+        <label>full_name<div class="input-action"><input data-field="full_name" list="organizationOptions" type="text"><button id="applyOrganization" type="button" title="採用文字中的部會建議"><i data-lucide="sparkles"></i></button></div></label>
+        <datalist id="organizationOptions"><option value="高速公路局"><option value="公路局"><option value="觀光署"><option value="運輸研究所"><option value="交通部"></datalist>
+
+        <fieldset class="action-fieldset">
+          <legend>action</legend>
+          <div id="actionControl" class="segmented action-control">
+            <button type="button" data-action="減列">減列</button>
+            <button type="button" data-action="凍結">凍結</button>
+            <button type="button" data-action="減列、凍結">減列、凍結</button>
+            <button type="button" data-action="其他建議">其他建議</button>
+          </div>
+        </fieldset>
+
+        <div class="field-grid amounts">
+          <label>cost<input data-field="cost" inputmode="numeric" type="text"><small data-amount-preview="cost"></small></label>
+          <label>deleted<input data-field="deleted" inputmode="numeric" type="text"><small data-amount-preview="deleted"></small></label>
+          <label>frozen<input data-field="frozen" inputmode="numeric" type="text"><small data-amount-preview="frozen"></small></label>
+        </div>
+
+        <details class="more-fields">
+          <summary><i data-lucide="sliders-horizontal"></i>其他欄位</summary>
+          <div class="field-grid two">
+            <label>預算部分<textarea data-field="預算部分" rows="2"></textarea></label>
+            <label>歲出歲入<select data-field="歲出歲入"><option value=""></option><option value="歲出部分">歲出部分</option><option value="歲入部分">歲入部分</option></select></label>
+            <label>款<input data-field="款" type="text"></label>
+            <label>項<input data-field="項" type="text"></label>
+            <label>category<input data-field="category" type="text"></label>
+            <label>government<input data-field="government" type="text"></label>
+          </div>
+          <label>提案人<textarea data-field="提案人" rows="2"></textarea></label>
+          <label>連署人<textarea data-field="連署人" rows="2"></textarea></label>
+          <label>內容<textarea data-field="內容" rows="8"></textarea></label>
+        </details>
+
+        <label>補充備註<textarea id="reviewNote" rows="2" placeholder="選填"></textarea></label>
+
+        <div class="row-tools">
+          <button id="splitRow" type="button" class="secondary-command" title="複製成一筆新提案"><i data-lucide="copy-plus"></i>拆成兩筆</button>
+          <button id="markProblem" type="button" class="secondary-command"><i data-lucide="flag"></i>稍後再看</button>
+        </div>
+        <div class="primary-actions">
+          <button id="previousRow" type="button" class="icon-button" title="上一筆" aria-label="上一筆"><i data-lucide="arrow-left"></i></button>
+          <button id="confirmNext" type="button" class="confirm-button"><i data-lucide="save"></i><span>儲存並下一筆</span></button>
+          <button id="nextRow" type="button" class="icon-button" title="下一筆" aria-label="下一筆"><i data-lucide="arrow-right"></i></button>
+        </div>
+      </aside>
+    </main>
+
+    <dialog id="checklistDialog">
+      <div class="dialog-head"><h2>校對清單</h2><button id="closeChecklist" class="icon-button" type="button" aria-label="關閉"><i data-lucide="x"></i></button></div>
+      <ol id="checklist"></ol>
+    </dialog>
+
+    <script>
+      window.MINUTES_REVIEW_DATA = "../data/minutes-review-22.json";
+    </script>
+    <script src="../assets/vendor/lucide.min.js"></script>
+    <script src="../assets/minutes.js?v=20260806-2"></script>
+  </body>
+</html>
