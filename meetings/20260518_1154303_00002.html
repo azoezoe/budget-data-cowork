@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>2026/05/18 司法及法制委員會 公報校對</title>
+    <link rel="stylesheet" href="../assets/styles.css">
+  </head>
+  <body>
+    <header class="topbar">
+      <div>
+        <h1>預算公報校對</h1>
+        <p id="summary">載入中...</p>
+      </div>
+      <div class="actions">
+        <button id="downloadJsonl" type="button">下載本組 JSONL</button>
+        <button id="downloadCsv" type="button">下載本組 CSV</button>
+        <button id="clearDraft" type="button" class="secondary">清除本機草稿</button>
+      </div>
+    </header>
+
+    <main>
+      <aside class="sidebar">
+        <label>
+          會議
+          <select id="datasetFilter"></select>
+        </label>
+        <label>
+          狀態
+          <select id="statusFilter">
+            <option value="">全部</option>
+            <option value="unchecked">未校對</option>
+            <option value="ok">ok</option>
+            <option value="change_proposal">改 proposal_ID</option>
+            <option value="change_image">改圖片</option>
+            <option value="needs_pairing">需重新配對</option>
+            <option value="skip">不需匯入</option>
+            <option value="unmatched_review">未配對待查</option>
+          </select>
+        </label>
+        <label>
+          搜尋
+          <input id="searchInput" type="search" placeholder="proposal_ID / 內容 / 圖片網址">
+        </label>
+        <div id="flowInfo" class="flow-info">第一段會先顯示有圖片可檢查的提案；全部處理後會自動進入配對池。</div>
+        <div id="datasetInfo" class="info"></div>
+      </aside>
+
+      <section class="content">
+        <section id="pairingPanel" class="pairing-panel" hidden>
+          <div class="pairing-head">
+            <div>
+              <h2>配對池</h2>
+              <p id="pairingSummary"></p>
+            </div>
+            <div class="pairing-actions">
+              <input id="pairNoteInput" type="text" placeholder="配對註解">
+              <button id="applyPair" type="button">配對選取項目</button>
+            </div>
+          </div>
+          <div class="pairing-grid">
+            <section>
+              <h3>文字待配對</h3>
+              <div id="missingProposalList" class="pair-list"></div>
+            </section>
+            <section>
+              <h3>圖片待配對</h3>
+              <div id="unmatchedImageList" class="pair-list"></div>
+            </section>
+          </div>
+        </section>
+        <div id="rows" class="rows"></div>
+      </section>
+    </main>
+
+    <template id="rowTemplate">
+      <article class="review-row">
+        <div class="image-pane"></div>
+        <div class="edit-pane">
+          <div class="row-head">
+            <span class="dataset"></span>
+            <span class="row-id"></span>
+          </div>
+          <label>
+            proposal_ID
+            <input class="proposal-input" type="text">
+          </label>
+          <label>
+            pdf 圖片網址
+            <textarea class="pdf-input" rows="3"></textarea>
+          </label>
+          <label class="checkbox-label">
+            <input class="done-input" type="checkbox">
+            確認完成
+          </label>
+          <button class="wrong-image-button secondary" type="button">圖片錯誤，進配對池</button>
+          <label>
+            備註
+            <textarea class="note-input" rows="2"></textarea>
+          </label>
+          <div class="content-text"></div>
+        </div>
+      </article>
+    </template>
+
+    <script>
+      window.BUDGET_REVIEW_DATA = "../data/gazette-review.json";
+      window.BUDGET_REVIEW_MEETING = "20260518_1154303_00002";
+    </script>
+    <script src="../assets/app.js"></script>
+  </body>
+</html>
