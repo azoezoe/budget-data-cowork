@@ -25,6 +25,16 @@ def first_present(row: dict[str, str], names: list[str]) -> str:
     return ""
 
 
+def site_dataset_name(dataset: dict) -> str:
+    source = dataset.get("source", "")
+    match = re.search(r"original_agenda_newflow/(\d{8})_[^/]+_(\d{7,8}_\d{5})/(check_pdf_review_newflow(?:_unmatched_images)?).csv", source)
+    if not match:
+        return dataset["name"]
+    date, agenda_id, kind = match.groups()
+    suffix = "unmatch" if kind.endswith("_unmatched_images") else "matched"
+    return f"{date}_{agenda_id}_{suffix}"
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--review-json", type=Path, required=True)
@@ -42,9 +52,10 @@ def main() -> None:
         source_row = str(metadata.get("來源表_來源列號", ""))
         if source_row in excluded:
             continue
+        dataset_name = site_dataset_name(dataset)
         datasets.append(
             {
-                "name": dataset["name"],
+                "name": dataset_name,
                 "source": dataset["source"],
                 "row_count": dataset["row_count"],
                 "source_sheet_row": source_row,
@@ -62,12 +73,12 @@ def main() -> None:
             content = first_present(row, ["內容", "content", "context_before", "ocr_text"])
             rows.append(
                 {
-                    "dataset": dataset["name"],
+                    "dataset": dataset_name,
                     "row_id": str(index),
                     "proposal_ID": row.get("proposal_ID", ""),
                     "content": content,
                     "pdf": split_urls(image_urls),
-                    "status": "unmatched_review" if dataset["name"].endswith("_unmatch") else "unchecked",
+                    "status": "unmatched_review" if dataset_name.endswith("_unmatch") else "unchecked",
                     "note": "",
                 }
             )
