@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>預算公報校對</title>
+    <link rel="stylesheet" href="assets/styles.css">
+  </head>
+  <body>
+    <header class="topbar">
+      <div>
+        <h1>預算公報校對</h1>
+        <p id="summary">載入中...</p>
+      </div>
+      <div class="actions">
+        <button id="downloadJsonl" type="button">下載 JSONL</button>
+        <button id="downloadCsv" type="button">下載 CSV</button>
+        <button id="clearDraft" type="button" class="secondary">清除本機草稿</button>
+      </div>
+    </header>
+
+    <main>
+      <aside class="sidebar">
+        <label>
+          會議
+          <select id="datasetFilter"></select>
+        </label>
+        <label>
+          狀態
+          <select id="statusFilter">
+            <option value="">全部</option>
+            <option value="unchecked">未校對</option>
+            <option value="ok">ok</option>
+            <option value="change_proposal">改 proposal_ID</option>
+            <option value="change_image">改圖片</option>
+            <option value="skip">不需匯入</option>
+            <option value="unmatched_review">未配對待查</option>
+          </select>
+        </label>
+        <label>
+          搜尋
+          <input id="searchInput" type="search" placeholder="proposal_ID / 內容 / 圖片網址">
+        </label>
+        <div id="datasetInfo" class="info"></div>
+      </aside>
+
+      <section class="content">
+        <div id="rows" class="rows"></div>
+      </section>
+    </main>
+
+    <template id="rowTemplate">
+      <article class="review-row">
+        <div class="image-pane"></div>
+        <div class="edit-pane">
+          <div class="row-head">
+            <span class="dataset"></span>
+            <span class="row-id"></span>
+          </div>
+          <label>
+            proposal_ID
+            <input class="proposal-input" type="text">
+          </label>
+          <label>
+            pdf 圖片網址
+            <textarea class="pdf-input" rows="3"></textarea>
+          </label>
+          <label>
+            狀態
+            <select class="status-input">
+              <option value="unchecked">未校對</option>
+              <option value="ok">ok</option>
+              <option value="change_proposal">改 proposal_ID</option>
+              <option value="change_image">改圖片</option>
+              <option value="skip">不需匯入</option>
+              <option value="unmatched_review">未配對待查</option>
+            </select>
+          </label>
+          <label>
+            備註
+            <textarea class="note-input" rows="2"></textarea>
+          </label>
+          <div class="content-text"></div>
+        </div>
+      </article>
+    </template>
+
+    <script src="assets/app.js"></script>
+  </body>
+</html>
