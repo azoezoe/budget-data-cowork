@@ -117,6 +117,7 @@ function renderRows() {
     rowsNode.textContent = "沒有符合條件的資料。";
   }
   updateDatasetInfo();
+  updateUrlDataset();
 }
 
 function updateSummary() {
@@ -155,7 +156,9 @@ function download(filename, content, type) {
 }
 
 function exportRows() {
-  return state.rows.map((raw) => {
+  const selectedDataset = document.querySelector("#datasetFilter").value;
+  const rows = selectedDataset ? state.rows.filter((row) => row.dataset === selectedDataset) : state.rows;
+  return rows.map((raw) => {
     const row = currentRow(raw);
     return {
       dataset: row.dataset,
@@ -166,6 +169,17 @@ function exportRows() {
       note: row.note || "",
     };
   });
+}
+
+function updateUrlDataset() {
+  const selectedDataset = document.querySelector("#datasetFilter").value;
+  const url = new URL(window.location.href);
+  if (selectedDataset) {
+    url.searchParams.set("dataset", selectedDataset);
+  } else {
+    url.searchParams.delete("dataset");
+  }
+  window.history.replaceState({}, "", url);
 }
 
 function csvEscape(value) {
@@ -185,7 +199,10 @@ async function init() {
   for (const dataset of state.datasets) {
     datasetFilter.append(new Option(`${dataset.name} (${dataset.row_count})`, dataset.name));
   }
-  if (state.datasets.length) {
+  const requestedDataset = new URLSearchParams(window.location.search).get("dataset");
+  if (requestedDataset && state.datasets.some((dataset) => dataset.name === requestedDataset)) {
+    datasetFilter.value = requestedDataset;
+  } else if (state.datasets.length) {
     datasetFilter.value = state.datasets[0].name;
   }
 

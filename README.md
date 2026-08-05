@@ -6,7 +6,7 @@ Static review pages for budget proposal gazette image matching.
 
 Open `index.html` locally or publish this repository with GitHub Pages.
 
-Reviewers edit rows in the browser and download `review-output.jsonl`.
+Reviewers open one dataset URL, edit rows in the browser, and download `review-output.jsonl`.
 Send that file back for import. CSV download is only a backup for manual checks.
 
 Each JSONL line is one reviewed row:
