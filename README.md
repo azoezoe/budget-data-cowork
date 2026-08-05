@@ -26,10 +26,12 @@ Use `status` this way:
 Use the checkbox when a row is confirmed. If proposal_ID or image URL is edited,
 the page marks the row status automatically.
 
-If a matched proposal has the wrong image, click `圖片錯誤，進配對池`. The proposal
-text moves to the text pool and the old image moves to the image pool.
+The page starts with matched proposals that already have images. Confirm each
+correct image, or click `圖片錯誤，進配對池` when the image is wrong. Rows without
+images do not appear in this first pass.
 
-Pairing mode shows text waiting for images next to images waiting for text from
-the same meeting. Select one text row and one image, then apply the pair.
+After all matched images are reviewed, the pairing pool appears automatically.
+It shows text waiting for images next to images waiting for text from the same
+meeting. Select one text row and one image, then apply the pair.
 
 The browser keeps draft edits in local storage until the reviewer exports or clears them.

@@ -70,6 +70,17 @@ button:disabled {
   background: #0f766e;
 }
 
+.flow-info {
+  margin: 2px 0 14px;
+  padding: 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #44505f;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
 .actions {
   display: flex;
   flex-wrap: wrap;

@@ -2,7 +2,6 @@ const state = {
   datasets: [],
   rows: [],
   edits: {},
-  pairMode: false,
   selectedProposalKey: "",
   selectedImageKey: "",
 };
@@ -88,15 +87,37 @@ function outputStatus(raw, row) {
   return row.status || raw.status || "unchecked";
 }
 
-function getFilteredRows() {
+function groupRows() {
   const dataset = document.querySelector("#datasetFilter").value;
-  const status = document.querySelector("#statusFilter").value;
-  const query = document.querySelector("#searchInput").value.trim().toLowerCase();
   const group = new Set(isMeetingValue(dataset) ? selectedDatasetGroup() : []);
   return state.rows.filter((raw) => {
     const row = currentRow(raw);
     if (isMeetingValue(dataset) && !group.has(row.dataset)) return false;
     if (dataset && !isMeetingValue(dataset) && row.dataset !== dataset) return false;
+    return true;
+  });
+}
+
+function isReviewCandidate(raw) {
+  const row = currentRow(raw);
+  return (
+    row.dataset.endsWith("_matched") &&
+    splitUrls(row.pdf).length > 0 &&
+    !row.done &&
+    outputStatus(raw, row) !== "ok" &&
+    outputStatus(raw, row) !== "skip"
+  );
+}
+
+function reviewRows() {
+  return groupRows().filter(isReviewCandidate);
+}
+
+function getFilteredRows(rows = reviewRows()) {
+  const status = document.querySelector("#statusFilter").value;
+  const query = document.querySelector("#searchInput").value.trim().toLowerCase();
+  return rows.filter((raw) => {
+    const row = currentRow(raw);
     if (status && outputStatus(raw, row) !== status) return false;
     if (!query) return true;
     return [row.dataset, row.row_id, row.proposal_ID, row.content, (row.pdf || []).join("\n"), row.note]
@@ -137,7 +158,8 @@ function renderRows() {
   const rowsNode = document.querySelector("#rows");
   const template = document.querySelector("#rowTemplate");
   rowsNode.textContent = "";
-  const rows = getFilteredRows();
+  const pendingRows = reviewRows();
+  const rows = getFilteredRows(pendingRows);
   for (const raw of rows) {
     const row = currentRow(raw);
     const node = template.content.firstElementChild.cloneNode(true);
@@ -163,6 +185,7 @@ function renderRows() {
         done: event.target.checked,
         status: event.target.checked ? "ok" : raw.status || "unchecked",
       });
+      renderRows();
     });
     node.querySelector(".wrong-image-button").addEventListener("click", () => {
       moveWrongImageToPool(raw);
@@ -173,7 +196,7 @@ function renderRows() {
     rowsNode.append(node);
   }
   if (!rows.length) {
-    rowsNode.textContent = "沒有符合條件的資料。";
+    rowsNode.textContent = pendingRows.length ? "沒有符合條件的資料。" : "第一段已完成，請往上方配對池繼續。";
   }
   updateDatasetInfo();
   updateUrlDataset();
@@ -181,10 +204,13 @@ function renderRows() {
 }
 
 function updateSummary() {
-  const datasetFilter = document.querySelector("#datasetFilter");
-  const rows = datasetFilter ? getFilteredRows() : state.rows;
-  const reviewed = rows.filter((row) => currentRow(row).status !== "unchecked").length;
-  document.querySelector("#summary").textContent = `目前頁面 ${rows.length} 筆，已標狀態 ${reviewed} 筆`;
+  const pending = reviewRows().length;
+  const { missingProposals, unmatchedImages, detachedImages } = matchingRows();
+  const imageCount = unmatchedImages.length + detachedImages.length;
+  document.querySelector("#summary").textContent =
+    pending > 0
+      ? `第一段待確認 ${pending} 筆；完成後進入配對池`
+      : `第一段完成；配對池 ${missingProposals.length} 筆文字、${imageCount} 張圖片`;
 }
 
 function updateDatasetInfo() {
@@ -245,20 +271,19 @@ function findRawByKey(key) {
 }
 
 function matchingRows() {
-  const group = new Set(selectedDatasetGroup());
-  const groupRows = state.rows.filter((row) => group.has(row.dataset));
-  const detachedImages = groupRows.filter((raw) => {
+  const rows = groupRows();
+  const detachedImages = rows.filter((raw) => {
     const row = currentRow(raw);
     return row.dataset.endsWith("_matched") && splitUrls(row.detached_pdf).length && !row.detached_used;
   });
   return {
-    missingProposals: groupRows.filter((raw) => {
+    missingProposals: rows.filter((raw) => {
       const row = currentRow(raw);
-      return row.dataset.endsWith("_matched") && !splitUrls(row.pdf).length && row.status !== "skip";
+      return row.dataset.endsWith("_matched") && !splitUrls(row.pdf).length && outputStatus(raw, row) !== "skip";
     }),
-    unmatchedImages: groupRows.filter((raw) => {
+    unmatchedImages: rows.filter((raw) => {
       const row = currentRow(raw);
-      return row.dataset.endsWith("_unmatch") && splitUrls(row.pdf).length && row.status !== "skip";
+      return row.dataset.endsWith("_unmatch") && splitUrls(row.pdf).length && outputStatus(raw, row) !== "skip";
     }),
     detachedImages,
   };
@@ -267,8 +292,9 @@ function matchingRows() {
 function renderPairingPanel() {
   const panel = document.querySelector("#pairingPanel");
   if (!panel) return;
-  panel.hidden = !state.pairMode;
-  if (!state.pairMode) return;
+  const pending = reviewRows().length;
+  panel.hidden = pending > 0;
+  if (pending > 0) return;
 
   const { missingProposals, unmatchedImages, detachedImages } = matchingRows();
   const imageCount = unmatchedImages.length + detachedImages.length;
@@ -384,8 +410,6 @@ function moveWrongImageToPool(raw) {
     status: "change_image",
     note: appendNote(raw, "圖片錯誤，已移入配對池"),
   });
-  state.pairMode = true;
-  document.querySelector("#pairModeButton").classList.add("active");
   renderRows();
 }
 
@@ -452,11 +476,6 @@ async function init() {
   for (const selector of ["#datasetFilter", "#statusFilter", "#searchInput"]) {
     document.querySelector(selector).addEventListener("input", renderRows);
   }
-  document.querySelector("#pairModeButton").addEventListener("click", () => {
-    state.pairMode = !state.pairMode;
-    document.querySelector("#pairModeButton").classList.toggle("active", state.pairMode);
-    renderPairingPanel();
-  });
   document.querySelector("#applyPair").addEventListener("click", applySelectedPair);
   document.querySelector("#downloadJsonl").addEventListener("click", () => {
     download(

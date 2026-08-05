@@ -81,7 +81,7 @@ def main() -> None:
           搜尋
           <input id="searchInput" type="search" placeholder="proposal_ID / 內容 / 圖片網址">
         </label>
-        <button id="pairModeButton" type="button" class="wide-button">配對模式</button>
+        <div id="flowInfo" class="flow-info">第一段會先顯示有圖片可檢查的提案；全部處理後會自動進入配對池。</div>
         <div id="datasetInfo" class="info"></div>
       </aside>
 
@@ -89,7 +89,7 @@ def main() -> None:
         <section id="pairingPanel" class="pairing-panel" hidden>
           <div class="pairing-head">
             <div>
-              <h2>配對模式</h2>
+              <h2>配對池</h2>
               <p id="pairingSummary"></p>
             </div>
             <button id="applyPair" type="button">配對選取項目</button>
