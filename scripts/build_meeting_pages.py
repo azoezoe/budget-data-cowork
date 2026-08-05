@@ -146,7 +146,7 @@ def main() -> None:
       window.BUDGET_REVIEW_DATA = "../data/gazette-review.json";
       window.BUDGET_REVIEW_MEETING = "{html.escape(group['base'])}";
     </script>
-    <script src="../assets/app.js"></script>
+    <script src="../assets/app.js?v=20260805-2"></script>
   </body>
 </html>
 """

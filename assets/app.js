@@ -443,13 +443,25 @@ function csvEscape(value) {
 async function init() {
   const response = await fetch(dataPath);
   const payload = await response.json();
-  state.datasets = payload.datasets;
-  state.rows = payload.rows;
+  if (initialMeeting) {
+    const meetingDatasets = new Set(
+      payload.datasets
+        .filter((dataset) => datasetBase(dataset.name) === initialMeeting)
+        .map((dataset) => dataset.name),
+    );
+    state.datasets = payload.datasets.filter((dataset) => meetingDatasets.has(dataset.name));
+    state.rows = payload.rows.filter((row) => meetingDatasets.has(row.dataset));
+  } else {
+    state.datasets = payload.datasets;
+    state.rows = payload.rows;
+  }
   state.edits = JSON.parse(localStorage.getItem(storageKey) || "{}");
 
   const datasetFilter = document.querySelector("#datasetFilter");
-  datasetFilter.append(new Option("全部", ""));
   const bases = [...new Set(state.datasets.map((dataset) => datasetBase(dataset.name)))];
+  if (!initialMeeting) {
+    datasetFilter.append(new Option("全部", ""));
+  }
   for (const base of bases) {
     const group = state.datasets.filter((dataset) => datasetBase(dataset.name) === base);
     const first = group[0];
@@ -458,13 +470,15 @@ async function init() {
       new Option(`${first.date} ${first.committee} ${base} (${rowCount})`, meetingValue(base)),
     );
   }
-  for (const dataset of state.datasets) {
-    datasetFilter.append(new Option(`${dataset.name} (${dataset.row_count})`, dataset.name));
+  if (!initialMeeting) {
+    for (const dataset of state.datasets) {
+      datasetFilter.append(new Option(`${dataset.name} (${dataset.row_count})`, dataset.name));
+    }
   }
   const params = new URLSearchParams(window.location.search);
   const requestedMeeting = params.get("meeting") || initialMeeting;
   const requestedDataset = params.get("dataset");
-  if (requestedDataset && state.datasets.some((dataset) => dataset.name === requestedDataset)) {
+  if (!initialMeeting && requestedDataset && state.datasets.some((dataset) => dataset.name === requestedDataset)) {
     datasetFilter.value = requestedDataset;
   } else if (requestedMeeting && bases.includes(requestedMeeting)) {
     datasetFilter.value = meetingValue(requestedMeeting);
@@ -473,6 +487,7 @@ async function init() {
   }
 
   if (initialMeeting) {
+    datasetFilter.disabled = true;
     datasetFilter.closest("label").hidden = true;
   }
 
