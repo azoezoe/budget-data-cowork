@@ -103,6 +103,7 @@ function isReviewCandidate(raw) {
   return (
     row.dataset.endsWith("_matched") &&
     splitUrls(row.pdf).length > 0 &&
+    !row.paired_from_pool &&
     !row.done &&
     outputStatus(raw, row) !== "ok" &&
     outputStatus(raw, row) !== "skip"
@@ -274,7 +275,7 @@ function matchingRows() {
   const rows = groupRows();
   const detachedImages = rows.filter((raw) => {
     const row = currentRow(raw);
-    return row.dataset.endsWith("_matched") && splitUrls(row.detached_pdf).length && !row.detached_used;
+    return row.dataset.endsWith("_matched") && splitUrls(row.detached_pdf).length;
   });
   return {
     missingProposals: rows.filter((raw) => {
@@ -373,27 +374,29 @@ function applySelectedPair() {
   if (!imageRow) return;
   const imageUrls = isDetached ? splitUrls(currentRow(imageRow).detached_pdf) : splitUrls(currentRow(imageRow).pdf);
   const proposalId = currentRow(proposal).proposal_ID || "";
+  const pairNote = document.querySelector("#pairNoteInput")?.value.trim() || "";
+  const sourceNote = `配對圖片來源：${imageRow.dataset} #${imageRow.row_id}`;
+  const reviewerNote = pairNote ? `配對註解：${pairNote}` : "";
   saveEdit(proposal, {
     pdf: imageUrls,
     status: "change_image",
     done: false,
     pair_pool: false,
-    detached_used: proposal === imageRow && isDetached ? true : currentRow(proposal).detached_used,
-    note: appendNote(proposal, `配對未配對圖片：${imageRow.dataset} #${imageRow.row_id}`),
+    paired_from_pool: true,
+    note: appendNote(proposal, [sourceNote, reviewerNote].filter(Boolean).join("\n")),
   });
   if (isDetached) {
     saveEdit(imageRow, {
-      detached_used: true,
-      note: appendNote(imageRow, `原錯配圖片已配對到 proposal_ID ${proposalId}：${proposal.dataset} #${proposal.row_id}`),
+      note: appendNote(imageRow, [`原錯配圖片已配對到 proposal_ID ${proposalId}：${proposal.dataset} #${proposal.row_id}`, reviewerNote].filter(Boolean).join("\n")),
     });
   } else {
     saveEdit(imageRow, {
-      status: "skip",
-      note: appendNote(imageRow, `已配對到 proposal_ID ${proposalId}：${proposal.dataset} #${proposal.row_id}`),
+      note: appendNote(imageRow, [`已配對到 proposal_ID ${proposalId}：${proposal.dataset} #${proposal.row_id}`, reviewerNote].filter(Boolean).join("\n")),
     });
   }
   state.selectedProposalKey = "";
-  state.selectedImageKey = "";
+  const noteInput = document.querySelector("#pairNoteInput");
+  if (noteInput) noteInput.value = "";
   renderRows();
 }
 

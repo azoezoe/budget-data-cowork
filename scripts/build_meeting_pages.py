@@ -92,7 +92,10 @@ def main() -> None:
               <h2>配對池</h2>
               <p id="pairingSummary"></p>
             </div>
-            <button id="applyPair" type="button">配對選取項目</button>
+            <div class="pairing-actions">
+              <input id="pairNoteInput" type="text" placeholder="配對註解">
+              <button id="applyPair" type="button">配對選取項目</button>
+            </div>
           </div>
           <div class="pairing-grid">
             <section>

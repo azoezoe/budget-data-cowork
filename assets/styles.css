@@ -186,6 +186,16 @@ textarea {
   font-size: 13px;
 }
 
+.pairing-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pairing-actions input {
+  min-width: 220px;
+}
+
 .pairing-grid {
   display: grid;
   grid-template-columns: minmax(280px, 1fr) minmax(320px, 1fr);
