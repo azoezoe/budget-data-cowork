@@ -262,6 +262,32 @@ textarea {
   border-radius: 4px;
 }
 
+.image-choice {
+  cursor: pointer;
+}
+
+.gazette-text {
+  border-top: 1px solid #d8dee8;
+  padding-top: 6px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #334155;
+}
+
+.gazette-text summary {
+  width: fit-content;
+  color: #0f766e;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.gazette-text div {
+  max-height: 220px;
+  margin-top: 6px;
+  overflow: auto;
+  white-space: pre-wrap;
+}
+
 .review-row {
   display: grid;
   grid-template-columns: minmax(320px, 44%) 1fr;

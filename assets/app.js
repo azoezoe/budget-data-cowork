@@ -304,6 +304,20 @@ function download(filename, content, type) {
   URL.revokeObjectURL(url);
 }
 
+function safeFilenamePart(value) {
+  return String(value || "all")
+    .trim()
+    .replace(/[\\/:*?"<>|]+/g, "_")
+    .replace(/\s+/g, "_")
+    .slice(0, 120) || "all";
+}
+
+function exportFilename(extension) {
+  const selectedDataset = document.querySelector("#datasetFilter").value;
+  const base = selectedDataset ? selectedBase() : "all";
+  return `${safeFilenamePart(base)}-review-output.${extension}`;
+}
+
 function exportRows() {
   const selectedDataset = document.querySelector("#datasetFilter").value;
   const group = new Set(selectedDataset ? selectedDatasetGroup() : state.datasets.map((dataset) => dataset.name));
@@ -336,6 +350,38 @@ function toggleSelectedImage(key) {
   } else {
     state.selectedImageKeys.add(key);
   }
+}
+
+function imageChoiceCard(key) {
+  const card = document.createElement("article");
+  card.className = `pair-item image-choice ${state.selectedImageKeys.has(key) ? "selected" : ""}`;
+  card.tabIndex = 0;
+  card.setAttribute("role", "button");
+  card.setAttribute("aria-pressed", state.selectedImageKeys.has(key) ? "true" : "false");
+  function toggleFromEvent(event) {
+    if (event.target.closest(".gazette-text")) return;
+    toggleSelectedImage(key);
+    renderPairingPanel();
+  }
+  card.addEventListener("click", toggleFromEvent);
+  card.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter" && event.key !== " ") return;
+    event.preventDefault();
+    toggleFromEvent(event);
+  });
+  return card;
+}
+
+function appendGazetteText(container, content, label = "公報文字") {
+  if (!content) return;
+  const details = document.createElement("details");
+  details.className = "gazette-text";
+  const summary = document.createElement("summary");
+  summary.textContent = label;
+  const text = document.createElement("div");
+  text.textContent = content;
+  details.append(summary, text);
+  container.append(details);
 }
 
 function matchingRows() {
@@ -417,42 +463,32 @@ function renderPairingPanel() {
   for (const raw of unmatchedImages) {
     const row = currentRow(raw);
     const key = imageCandidateKey(raw);
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = `pair-item image-choice ${state.selectedImageKeys.has(key) ? "selected" : ""}`;
+    const card = imageChoiceCard(key);
     const image = document.createElement("img");
     image.src = splitUrls(row.pdf)[0];
     image.loading = "lazy";
     image.alt = "未配對圖片";
     const span = document.createElement("span");
-    span.textContent = row.content || splitUrls(row.pdf).join("\n");
-    button.append(image, span);
-    button.addEventListener("click", () => {
-      toggleSelectedImage(key);
-      renderPairingPanel();
-    });
-    imageList.append(button);
+    span.textContent = splitPreview(row.content || splitUrls(row.pdf).join("\n"), 42, 32).head;
+    card.append(image, span);
+    appendGazetteText(card, row.content);
+    imageList.append(card);
   }
 
   for (const raw of detachedImages) {
     const row = currentRow(raw);
     splitUrls(row.detached_pdf).forEach((url, index) => {
       const key = detachedCandidateKey(raw, index);
-      const button = document.createElement("button");
-      button.type = "button";
-      button.className = `pair-item image-choice ${state.selectedImageKeys.has(key) ? "selected" : ""}`;
+      const card = imageChoiceCard(key);
       const image = document.createElement("img");
       image.src = url;
       image.loading = "lazy";
       image.alt = "待重新配對圖片";
       const span = document.createElement("span");
       span.textContent = `原本配到 proposal_ID ${row.proposal_ID || ""}\n${url}`;
-      button.append(image, span);
-      button.addEventListener("click", () => {
-        toggleSelectedImage(key);
-        renderPairingPanel();
-      });
-      imageList.append(button);
+      card.append(image, span);
+      appendGazetteText(card, row.content, "原配對文字");
+      imageList.append(card);
     });
   }
 
@@ -625,7 +661,7 @@ async function init() {
   document.querySelector("#applyPair").addEventListener("click", applySelectedPair);
   document.querySelector("#downloadJsonl").addEventListener("click", () => {
     download(
-      "review-output.jsonl",
+      exportFilename("jsonl"),
       exportRows().map((row) => JSON.stringify(row)).join("\n") + "\n",
       "application/x-ndjson;charset=utf-8",
     );
@@ -633,7 +669,7 @@ async function init() {
   document.querySelector("#downloadCsv").addEventListener("click", () => {
     const headers = ["dataset", "row_id", "proposal_ID", "pdf", "status", "done", "pair_pool", "detached_pdf", "paired_from_pool", "paired_to_proposal", "note"];
     const rows = exportRows().map((row) => headers.map((header) => csvEscape(row[header])).join(","));
-    download("review-output.csv", `${headers.join(",")}\n${rows.join("\n")}\n`, "text/csv;charset=utf-8");
+    download(exportFilename("csv"), `${headers.join(",")}\n${rows.join("\n")}\n`, "text/csv;charset=utf-8");
   });
   document.querySelector("#clearDraft").addEventListener("click", () => {
     if (!confirm("清除這台電腦上的草稿？")) return;
