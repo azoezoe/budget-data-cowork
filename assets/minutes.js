@@ -526,9 +526,28 @@ function download(filename, content, type) {
   URL.revokeObjectURL(url);
 }
 
+function filenamePart(value, fallback) {
+  const cleaned = String(value || "")
+    .trim()
+    .replace(/[\\/:*?"<>|%]+/g, "-")
+    .replace(/\s+/g, "_")
+    .replace(/^-+|-+$/g, "");
+  return cleaned || fallback;
+}
+
+function filenameDate(value) {
+  const match = String(value || "").match(/^(\d{4})\D+(\d{1,2})\D+(\d{1,2})$/);
+  if (!match) return filenamePart(value, "unknown-date");
+  return `${match[1]}${match[2].padStart(2, "0")}${match[3].padStart(2, "0")}`;
+}
+
 function exportBaseName() {
-  const row = state.payload?.dataset?.source_sheet_row || "review";
-  return `minutes-review-${row}`;
+  const dataset = state.payload?.dataset || {};
+  const row = filenamePart(dataset.source_sheet_row, "review");
+  const date = filenameDate(dataset.date);
+  const committee = filenamePart(dataset.committee, "unknown-committee");
+  const meeting = filenamePart(dataset.meeting_code, "unknown-meeting").replace(/^委員會-/, "");
+  return `minutes-review-${row}_${date}_${committee}_${meeting}`;
 }
 
 function exportRows() {

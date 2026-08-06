@@ -10,6 +10,8 @@ current extracted proposal, and structured fields visible together. Reviewers
 mark each row as correct, needs amendment, or delete. Missing proposals can be
 created from selected source text or as a blank row. Drafts stay in browser local
 storage; reviewers return the CSV or JSONL download after checking the meeting.
+Export filenames include the Meeting Sheet row, date, committee, and meeting
+code, for example `minutes-review-33_20260610_交通委員會_11-5-23-18.jsonl`.
 
 The original-source view prefers Dataly's meeting-minutes HTML at
 `meet-proceeding-html/{meeting_code}.html`. The build step saves a same-origin

@@ -46,6 +46,11 @@ class MinutesBatchTest(unittest.TestCase):
         self.assertEqual("duplicate of row 25", reasons["28_20260604_judiciary_委員會-11-5-36-16"])
         self.assertEqual("zero proposals", reasons["41_20260617_finance_委員會-11-5-20-19"])
 
+    def test_export_filename_contains_meeting_identity(self):
+        script = (ROOT / "assets" / "minutes.js").read_text(encoding="utf-8")
+        for field in ("source_sheet_row", "date", "committee", "meeting_code"):
+            self.assertIn(f"dataset.{field}", script)
+
 
 if __name__ == "__main__":
     unittest.main()
