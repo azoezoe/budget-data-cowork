@@ -6,7 +6,44 @@ from __future__ import annotations
 import argparse
 import json
 import re
+from html.parser import HTMLParser
 from pathlib import Path
+
+
+WORKSPACE_ROOT = Path(__file__).resolve().parents[2]
+
+
+class GazetteTextExtractor(HTMLParser):
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=True)
+        self.parts: list[str] = []
+        self.skip_depth = 0
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        if tag in {"script", "style"}:
+            self.skip_depth += 1
+        if tag in {"p", "div", "br", "tr", "li", "h1", "h2", "h3"}:
+            self.parts.append("\n")
+
+    def handle_endtag(self, tag: str) -> None:
+        if tag in {"script", "style"} and self.skip_depth:
+            self.skip_depth -= 1
+        if tag in {"p", "div", "tr", "li", "h1", "h2", "h3"}:
+            self.parts.append("\n")
+
+    def handle_data(self, data: str) -> None:
+        if self.skip_depth:
+            return
+        text = re.sub(r"\s+", " ", data).strip()
+        if text:
+            self.parts.append(text)
+
+    def text(self) -> str:
+        text = "".join(self.parts)
+        text = re.sub(r"[ \t]*\n[ \t]*", "\n", text)
+        text = re.sub(r"\n{3,}", "\n\n", text)
+        text = re.sub(r"(?<!\n)(主席|[^：\n]{1,12}(?:委員|處長|部長|署長|主委|主任委員|局長|司長|次長|秘書長|執行長)[^：\n]{0,8})：", r"\n\1：", text)
+        return text.strip()
 
 
 def split_urls(value: str) -> list[str]:
@@ -61,6 +98,25 @@ def site_dataset_name(dataset: dict) -> str:
     return f"{date}_{agenda_id}_{suffix}"
 
 
+def agenda_html_path(dataset: dict) -> Path | None:
+    source = str(dataset.get("source", ""))
+    source_path = WORKSPACE_ROOT / source
+    if not source_path.exists():
+        return None
+    folder = source_path.parent
+    candidates = sorted(folder.glob("agenda_*.html"))
+    return candidates[0] if candidates else None
+
+
+def gazette_text(dataset: dict) -> str:
+    path = agenda_html_path(dataset)
+    if not path or not path.exists():
+        return ""
+    parser = GazetteTextExtractor()
+    parser.feed(path.read_text(encoding="utf-8", errors="replace"))
+    return parser.text()
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--review-json", type=Path, required=True)
@@ -83,6 +139,7 @@ def main() -> None:
 
     datasets = []
     rows = []
+    text_by_source: dict[str, str] = {}
     for dataset in gazette_datasets:
         metadata = dataset.get("metadata") or {}
         source_row = str(metadata.get("來源表_來源列號", ""))
@@ -96,16 +153,19 @@ def main() -> None:
         ):
             continue
         dataset_name = site_dataset_name(dataset)
+        source = dataset["source"]
+        text_by_source.setdefault(source, gazette_text(dataset))
         datasets.append(
             {
                 "name": dataset_name,
-                "source": dataset["source"],
+                "source": source,
                 "row_count": dataset["row_count"],
                 "source_sheet_row": source_row,
                 "date": metadata.get("來源表_會議日期", ""),
                 "committee": metadata.get("來源表_委員會名稱", ""),
                 "ppg_url": metadata.get("ppg_url", "") or metadata.get("會議記錄連結", ""),
                 "html_file": split_urls(metadata.get("公報HTML", "")),
+                "gazette_text": text_by_source[source],
                 "fingerprint": dataset.get("fingerprint", ""),
             }
         )

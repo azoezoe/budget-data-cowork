@@ -43,7 +43,7 @@ def main() -> None:
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{html.escape(title)}</title>
-    <link rel="stylesheet" href="../assets/styles.css?v=20260806-7">
+    <link rel="stylesheet" href="../assets/styles.css?v=20260806-8">
   </head>
   <body>
     <header class="topbar">
@@ -52,6 +52,7 @@ def main() -> None:
         <p id="summary">載入中...</p>
       </div>
       <div class="actions">
+        <button id="openGazetteText" type="button" class="secondary">整份公報文字</button>
         <button id="downloadJsonl" type="button">下載本組 JSONL</button>
         <button id="downloadCsv" type="button">下載本組 CSV</button>
         <button id="clearDraft" type="button" class="secondary">清除本機草稿</button>
@@ -151,7 +152,7 @@ def main() -> None:
       window.BUDGET_REVIEW_DATA = "../data/gazette-review.json";
       window.BUDGET_REVIEW_MEETING = "{html.escape(group['base'])}";
     </script>
-    <script src="../assets/app.js?v=20260806-7"></script>
+    <script src="../assets/app.js?v=20260806-8"></script>
   </body>
 </html>
 """

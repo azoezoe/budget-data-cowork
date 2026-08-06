@@ -61,6 +61,23 @@ function selectedDatasetGroup() {
   return state.datasets.filter((dataset) => datasetBase(dataset.name) === base).map((dataset) => dataset.name);
 }
 
+function selectedDatasets() {
+  const selected = document.querySelector("#datasetFilter").value;
+  if (!selected) return state.datasets;
+  if (isMeetingValue(selected)) {
+    const group = new Set(selectedDatasetGroup());
+    return state.datasets.filter((dataset) => group.has(dataset.name));
+  }
+  return state.datasets.filter((dataset) => dataset.name === selected);
+}
+
+function selectedGazetteText() {
+  for (const dataset of selectedDatasets()) {
+    if (dataset.gazette_text) return dataset.gazette_text;
+  }
+  return "";
+}
+
 function appendNote(row, text) {
   const existing = currentRow(row).note || "";
   return existing ? `${existing}\n${text}` : text;
@@ -273,17 +290,18 @@ function updateSummary() {
 function updateDatasetInfo() {
   const selected = document.querySelector("#datasetFilter").value;
   const info = document.querySelector("#datasetInfo");
+  const textButton = document.querySelector("#openGazetteText");
   if (!selected) {
     info.textContent = "選擇單一會議後，這裡會顯示來源資訊。";
+    if (textButton) textButton.disabled = true;
     return;
   }
-  const group = isMeetingValue(selected)
-    ? state.datasets.filter((item) => selectedDatasetGroup().includes(item.name))
-    : state.datasets.filter((item) => item.name === selected);
+  const group = selectedDatasets();
   const dataset = group[0];
   if (!dataset) return;
   const rowCount = group.reduce((sum, item) => sum + Number(item.row_count || 0), 0);
   const htmlFiles = [...new Set(group.flatMap((item) => item.html_file || []))];
+  if (textButton) textButton.disabled = !selectedGazetteText();
   info.textContent = [
     `來源列號：${dataset.source_sheet_row || ""}`,
     `日期：${dataset.date || ""}`,
@@ -411,17 +429,16 @@ function closeGazetteDrawer() {
   document.body.classList.remove("drawer-open");
 }
 
-function appendGazetteTextButton(container, content, label = "公報文字") {
-  if (!content) return;
-  const button = document.createElement("button");
-  button.type = "button";
-  button.className = "gazette-text-button secondary";
-  button.textContent = `看${label}`;
-  button.addEventListener("click", (event) => {
-    event.stopPropagation();
-    showGazetteDrawer(label, content);
+function withdrawProposal(raw) {
+  saveEdit(raw, {
+    status: "skip",
+    done: false,
+    note: appendNote(raw, "此案撤案"),
   });
-  container.append(button);
+  if (state.selectedProposalKey === rowKey(raw)) {
+    state.selectedProposalKey = "";
+  }
+  renderRows();
 }
 
 function matchingRows() {
@@ -474,22 +491,53 @@ function renderPairingPanel() {
   function appendProposalChoice(raw, container, paired = false) {
     const row = currentRow(raw);
     const key = rowKey(raw);
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = `pair-item ${state.selectedProposalKey === key ? "selected" : ""}`;
+    const card = document.createElement("article");
+    card.className = `pair-item proposal-choice ${state.selectedProposalKey === key ? "selected" : ""}`;
+    card.tabIndex = 0;
+    card.setAttribute("role", "button");
+    card.setAttribute("aria-pressed", state.selectedProposalKey === key ? "true" : "false");
     const pdfCount = splitUrls(row.pdf).length;
     const contentPreview = splitPreview(row.content);
-    const previewHtml = contentPreview.tail
-      ? `<span class="pair-preview" title="${escapeHtml(row.content || "")}"><span>${escapeHtml(contentPreview.head)}</span><span class="pair-preview-tail">${escapeHtml(contentPreview.tail)}</span></span>`
-      : `<span class="pair-preview" title="${escapeHtml(row.content || "")}">${escapeHtml(contentPreview.head)}</span>`;
-    button.innerHTML = paired
-      ? `<strong>${row.proposal_ID || "(無 proposal_ID)"} 已配 ${pdfCount} 張，可繼續加圖</strong>${previewHtml}`
-      : `<strong>${row.proposal_ID || "(無 proposal_ID)"}</strong>${previewHtml}`;
-    button.addEventListener("click", () => {
+    const title = document.createElement("strong");
+    title.textContent = paired
+      ? `${row.proposal_ID || "(無 proposal_ID)"} 已配 ${pdfCount} 張，可繼續加圖`
+      : row.proposal_ID || "(無 proposal_ID)";
+    const preview = document.createElement("span");
+    preview.className = "pair-preview";
+    preview.title = row.content || "";
+    const head = document.createElement("span");
+    head.textContent = contentPreview.head;
+    preview.append(head);
+    if (contentPreview.tail) {
+      const tail = document.createElement("span");
+      tail.className = "pair-preview-tail";
+      tail.textContent = contentPreview.tail;
+      preview.append(tail);
+    }
+    card.append(title, preview);
+    if (!paired) {
+      const withdrawButton = document.createElement("button");
+      withdrawButton.type = "button";
+      withdrawButton.className = "withdraw-button secondary";
+      withdrawButton.textContent = "此案撤案";
+      withdrawButton.addEventListener("click", (event) => {
+        event.stopPropagation();
+        withdrawProposal(raw);
+      });
+      card.append(withdrawButton);
+    }
+    function selectProposal(event) {
+      if (event.target.closest(".withdraw-button")) return;
       state.selectedProposalKey = key;
       renderPairingPanel();
+    }
+    card.addEventListener("click", selectProposal);
+    card.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter" && event.key !== " ") return;
+      event.preventDefault();
+      selectProposal(event);
     });
-    container.append(button);
+    container.append(card);
   }
 
   for (const raw of missingProposals) {
@@ -511,7 +559,6 @@ function renderPairingPanel() {
     const span = document.createElement("span");
     span.textContent = splitPreview(row.content || splitUrls(row.pdf).join("\n"), 42, 32).head;
     card.append(image, span);
-    appendGazetteTextButton(card, row.content);
     imageList.append(card);
   }
 
@@ -527,7 +574,6 @@ function renderPairingPanel() {
       const span = document.createElement("span");
       span.textContent = `原本配到 proposal_ID ${row.proposal_ID || ""}\n${url}`;
       card.append(image, span);
-      appendGazetteTextButton(card, row.content, "原配對文字");
       imageList.append(card);
     });
   }
@@ -700,6 +746,12 @@ async function init() {
     document.querySelector(selector).addEventListener("input", renderRows);
   }
   document.querySelector("#applyPair").addEventListener("click", applySelectedPair);
+  const openGazetteTextButton = document.querySelector("#openGazetteText");
+  if (openGazetteTextButton) {
+    openGazetteTextButton.addEventListener("click", () => {
+      showGazetteDrawer("整份公報文字", selectedGazetteText());
+    });
+  }
   document.querySelector("#downloadJsonl").addEventListener("click", () => {
     download(
       exportFilename("jsonl"),
