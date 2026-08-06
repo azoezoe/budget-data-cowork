@@ -43,7 +43,7 @@ def main() -> None:
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{html.escape(title)}</title>
-    <link rel="stylesheet" href="../assets/styles.css">
+    <link rel="stylesheet" href="../assets/styles.css?v=20260806-5">
   </head>
   <body>
     <header class="topbar">
@@ -151,7 +151,7 @@ def main() -> None:
       window.BUDGET_REVIEW_DATA = "../data/gazette-review.json";
       window.BUDGET_REVIEW_MEETING = "{html.escape(group['base'])}";
     </script>
-    <script src="../assets/app.js?v=20260806-4"></script>
+    <script src="../assets/app.js?v=20260806-5"></script>
   </body>
 </html>
 """

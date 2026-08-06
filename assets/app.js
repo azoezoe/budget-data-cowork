@@ -74,10 +74,15 @@ function hasCaseLabel(value) {
   return /【[^】]*\d[^】]*】/.test(String(value || ""));
 }
 
-function middleEllipsis(value, headLength = 92, tailLength = 52) {
+function splitPreview(value, headLength = 58, tailLength = 42) {
   const text = String(value || "").replace(/\s+/g, " ").trim();
-  if (text.length <= headLength + tailLength + 1) return text;
-  return `${text.slice(0, headLength)}...${text.slice(-tailLength)}`;
+  if (text.length <= headLength + tailLength + 1) {
+    return { head: text, tail: "" };
+  }
+  return {
+    head: `${text.slice(0, headLength)}...`,
+    tail: `...${text.slice(-tailLength)}`,
+  };
 }
 
 function escapeHtml(value) {
@@ -387,10 +392,13 @@ function renderPairingPanel() {
     button.type = "button";
     button.className = `pair-item ${state.selectedProposalKey === key ? "selected" : ""}`;
     const pdfCount = splitUrls(row.pdf).length;
-    const contentPreview = middleEllipsis(row.content);
+    const contentPreview = splitPreview(row.content);
+    const previewHtml = contentPreview.tail
+      ? `<span class="pair-preview" title="${escapeHtml(row.content || "")}"><span>${escapeHtml(contentPreview.head)}</span><span class="pair-preview-tail">${escapeHtml(contentPreview.tail)}</span></span>`
+      : `<span class="pair-preview" title="${escapeHtml(row.content || "")}">${escapeHtml(contentPreview.head)}</span>`;
     button.innerHTML = paired
-      ? `<strong>${row.proposal_ID || "(無 proposal_ID)"} 已配 ${pdfCount} 張，可繼續加圖</strong><span title="${escapeHtml(row.content || "")}">${escapeHtml(contentPreview)}</span>`
-      : `<strong>${row.proposal_ID || "(無 proposal_ID)"}</strong><span title="${escapeHtml(row.content || "")}">${escapeHtml(contentPreview)}</span>`;
+      ? `<strong>${row.proposal_ID || "(無 proposal_ID)"} 已配 ${pdfCount} 張，可繼續加圖</strong>${previewHtml}`
+      : `<strong>${row.proposal_ID || "(無 proposal_ID)"}</strong>${previewHtml}`;
     button.addEventListener("click", () => {
       state.selectedProposalKey = key;
       renderPairingPanel();

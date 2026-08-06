@@ -232,12 +232,19 @@ textarea {
 }
 
 .pair-item span {
-  display: -webkit-box;
-  overflow: hidden;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 5;
+  display: block;
   font-size: 13px;
   line-height: 1.5;
+}
+
+.pair-preview {
+  display: grid;
+  gap: 4px;
+}
+
+.pair-preview-tail {
+  color: #475569;
+  font-weight: 700;
 }
 
 .pair-item.selected {
