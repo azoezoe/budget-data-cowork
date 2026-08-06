@@ -377,7 +377,7 @@ function imageChoiceCard(key) {
   card.setAttribute("role", "button");
   card.setAttribute("aria-pressed", state.selectedImageKeys.has(key) ? "true" : "false");
   function toggleFromEvent(event) {
-    if (event.target.closest(".withdraw-button")) return;
+    if (event.target.closest(".image-action-control")) return;
     toggleSelectedImage(key);
     renderPairingPanel();
   }
@@ -451,6 +451,66 @@ function withdrawDetachedImage(raw, index) {
   });
   state.selectedImageKeys.delete(detachedCandidateKey(raw, index));
   renderRows();
+}
+
+function markImageLost(raw, reason) {
+  saveEdit(raw, {
+    status: "skip",
+    done: false,
+    note: appendNote(raw, `遺失：${reason}`),
+  });
+  state.selectedImageKeys.delete(imageCandidateKey(raw));
+  renderRows();
+}
+
+function markDetachedImageLost(raw, index, reason) {
+  const row = currentRow(raw);
+  const urls = splitUrls(row.detached_pdf);
+  const lostUrl = urls[index] || "";
+  const remainingUrls = urls.filter((_, urlIndex) => urlIndex !== index);
+  saveEdit(raw, {
+    detached_pdf: remainingUrls,
+    detached_used: remainingUrls.length === 0,
+    note: appendNote(raw, lostUrl ? `遺失：${reason}\n圖片：${lostUrl}` : `遺失：${reason}`),
+  });
+  state.selectedImageKeys.delete(detachedCandidateKey(raw, index));
+  renderRows();
+}
+
+function imageActionControls(onWithdraw, onLost) {
+  const controls = document.createElement("div");
+  controls.className = "image-action-control";
+  const withdrawButton = document.createElement("button");
+  withdrawButton.type = "button";
+  withdrawButton.className = "withdraw-button secondary";
+  withdrawButton.textContent = "此案撤案";
+  withdrawButton.addEventListener("click", (event) => {
+    event.stopPropagation();
+    onWithdraw();
+  });
+
+  const lostRow = document.createElement("div");
+  lostRow.className = "lost-control";
+  const lostInput = document.createElement("input");
+  lostInput.type = "text";
+  lostInput.placeholder = "遺失原因";
+  const lostButton = document.createElement("button");
+  lostButton.type = "button";
+  lostButton.className = "withdraw-button secondary";
+  lostButton.textContent = "遺失";
+  lostButton.disabled = true;
+  lostInput.addEventListener("input", () => {
+    lostButton.disabled = !lostInput.value.trim();
+  });
+  lostButton.addEventListener("click", (event) => {
+    event.stopPropagation();
+    const reason = lostInput.value.trim();
+    if (!reason) return;
+    onLost(reason);
+  });
+  lostRow.append(lostInput, lostButton);
+  controls.append(withdrawButton, lostRow);
+  return controls;
 }
 
 function matchingRows() {
@@ -558,15 +618,14 @@ function renderPairingPanel() {
     image.alt = "未配對圖片";
     const span = document.createElement("span");
     span.textContent = splitPreview(row.content || splitUrls(row.pdf).join("\n"), 42, 32).head;
-    const withdrawButton = document.createElement("button");
-    withdrawButton.type = "button";
-    withdrawButton.className = "withdraw-button secondary";
-    withdrawButton.textContent = "此案撤案";
-    withdrawButton.addEventListener("click", (event) => {
-      event.stopPropagation();
-      withdrawImage(raw);
-    });
-    card.append(image, span, withdrawButton);
+    card.append(
+      image,
+      span,
+      imageActionControls(
+        () => withdrawImage(raw),
+        (reason) => markImageLost(raw, reason),
+      ),
+    );
     imageList.append(card);
   }
 
@@ -581,15 +640,14 @@ function renderPairingPanel() {
       image.alt = "待重新配對圖片";
       const span = document.createElement("span");
       span.textContent = `原本配到 proposal_ID ${row.proposal_ID || ""}\n${url}`;
-      const withdrawButton = document.createElement("button");
-      withdrawButton.type = "button";
-      withdrawButton.className = "withdraw-button secondary";
-      withdrawButton.textContent = "此案撤案";
-      withdrawButton.addEventListener("click", (event) => {
-        event.stopPropagation();
-        withdrawDetachedImage(raw, index);
-      });
-      card.append(image, span, withdrawButton);
+      card.append(
+        image,
+        span,
+        imageActionControls(
+          () => withdrawDetachedImage(raw, index),
+          (reason) => markDetachedImageLost(raw, index, reason),
+        ),
+      );
       imageList.append(card);
     });
   }

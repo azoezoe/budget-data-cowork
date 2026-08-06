@@ -273,6 +273,18 @@ textarea {
   font-size: 13px;
 }
 
+.image-action-control {
+  display: grid;
+  gap: 8px;
+}
+
+.lost-control {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px;
+  align-items: center;
+}
+
 .gazette-drawer[hidden] {
   display: none;
 }
