@@ -74,6 +74,20 @@ function hasCaseLabel(value) {
   return /【[^】]*\d[^】]*】/.test(String(value || ""));
 }
 
+function middleEllipsis(value, headLength = 92, tailLength = 52) {
+  const text = String(value || "").replace(/\s+/g, " ").trim();
+  if (text.length <= headLength + tailLength + 1) return text;
+  return `${text.slice(0, headLength)}...${text.slice(-tailLength)}`;
+}
+
+function escapeHtml(value) {
+  return String(value || "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;");
+}
+
 function matchRiskReasons(row) {
   const reasons = [];
   const urls = splitUrls(row.pdf);
@@ -365,9 +379,10 @@ function renderPairingPanel() {
     button.type = "button";
     button.className = `pair-item ${state.selectedProposalKey === key ? "selected" : ""}`;
     const pdfCount = splitUrls(row.pdf).length;
+    const contentPreview = middleEllipsis(row.content);
     button.innerHTML = paired
-      ? `<strong>${row.proposal_ID || "(無 proposal_ID)"} 已配 ${pdfCount} 張，可繼續加圖</strong><span>${row.content || ""}</span>`
-      : `<strong>${row.proposal_ID || "(無 proposal_ID)"}</strong><span>${row.content || ""}</span>`;
+      ? `<strong>${row.proposal_ID || "(無 proposal_ID)"} 已配 ${pdfCount} 張，可繼續加圖</strong><span title="${escapeHtml(row.content || "")}">${escapeHtml(contentPreview)}</span>`
+      : `<strong>${row.proposal_ID || "(無 proposal_ID)"}</strong><span title="${escapeHtml(row.content || "")}">${escapeHtml(contentPreview)}</span>`;
     button.addEventListener("click", () => {
       state.selectedProposalKey = key;
       renderPairingPanel();
