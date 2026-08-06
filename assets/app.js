@@ -293,7 +293,7 @@ function updateDatasetInfo() {
   const textButton = document.querySelector("#openGazetteText");
   if (!selected) {
     info.textContent = "選擇單一會議後，這裡會顯示來源資訊。";
-    if (textButton) textButton.disabled = true;
+    if (textButton) textButton.disabled = false;
     return;
   }
   const group = selectedDatasets();
@@ -301,7 +301,7 @@ function updateDatasetInfo() {
   if (!dataset) return;
   const rowCount = group.reduce((sum, item) => sum + Number(item.row_count || 0), 0);
   const htmlFiles = [...new Set(group.flatMap((item) => item.html_file || []))];
-  if (textButton) textButton.disabled = !selectedGazetteText();
+  if (textButton) textButton.disabled = false;
   info.textContent = [
     `來源列號：${dataset.source_sheet_row || ""}`,
     `日期：${dataset.date || ""}`,
@@ -377,7 +377,7 @@ function imageChoiceCard(key) {
   card.setAttribute("role", "button");
   card.setAttribute("aria-pressed", state.selectedImageKeys.has(key) ? "true" : "false");
   function toggleFromEvent(event) {
-    if (event.target.closest(".gazette-text-button")) return;
+    if (event.target.closest(".withdraw-button")) return;
     toggleSelectedImage(key);
     renderPairingPanel();
   }
@@ -429,15 +429,27 @@ function closeGazetteDrawer() {
   document.body.classList.remove("drawer-open");
 }
 
-function withdrawProposal(raw) {
+function withdrawImage(raw) {
   saveEdit(raw, {
     status: "skip",
     done: false,
     note: appendNote(raw, "此案撤案"),
   });
-  if (state.selectedProposalKey === rowKey(raw)) {
-    state.selectedProposalKey = "";
-  }
+  state.selectedImageKeys.delete(imageCandidateKey(raw));
+  renderRows();
+}
+
+function withdrawDetachedImage(raw, index) {
+  const row = currentRow(raw);
+  const urls = splitUrls(row.detached_pdf);
+  const withdrawnUrl = urls[index] || "";
+  const remainingUrls = urls.filter((_, urlIndex) => urlIndex !== index);
+  saveEdit(raw, {
+    detached_pdf: remainingUrls,
+    detached_used: remainingUrls.length === 0,
+    note: appendNote(raw, withdrawnUrl ? `此案撤案：${withdrawnUrl}` : "此案撤案"),
+  });
+  state.selectedImageKeys.delete(detachedCandidateKey(raw, index));
   renderRows();
 }
 
@@ -515,19 +527,7 @@ function renderPairingPanel() {
       preview.append(tail);
     }
     card.append(title, preview);
-    if (!paired) {
-      const withdrawButton = document.createElement("button");
-      withdrawButton.type = "button";
-      withdrawButton.className = "withdraw-button secondary";
-      withdrawButton.textContent = "此案撤案";
-      withdrawButton.addEventListener("click", (event) => {
-        event.stopPropagation();
-        withdrawProposal(raw);
-      });
-      card.append(withdrawButton);
-    }
     function selectProposal(event) {
-      if (event.target.closest(".withdraw-button")) return;
       state.selectedProposalKey = key;
       renderPairingPanel();
     }
@@ -558,7 +558,15 @@ function renderPairingPanel() {
     image.alt = "未配對圖片";
     const span = document.createElement("span");
     span.textContent = splitPreview(row.content || splitUrls(row.pdf).join("\n"), 42, 32).head;
-    card.append(image, span);
+    const withdrawButton = document.createElement("button");
+    withdrawButton.type = "button";
+    withdrawButton.className = "withdraw-button secondary";
+    withdrawButton.textContent = "此案撤案";
+    withdrawButton.addEventListener("click", (event) => {
+      event.stopPropagation();
+      withdrawImage(raw);
+    });
+    card.append(image, span, withdrawButton);
     imageList.append(card);
   }
 
@@ -573,7 +581,15 @@ function renderPairingPanel() {
       image.alt = "待重新配對圖片";
       const span = document.createElement("span");
       span.textContent = `原本配到 proposal_ID ${row.proposal_ID || ""}\n${url}`;
-      card.append(image, span);
+      const withdrawButton = document.createElement("button");
+      withdrawButton.type = "button";
+      withdrawButton.className = "withdraw-button secondary";
+      withdrawButton.textContent = "此案撤案";
+      withdrawButton.addEventListener("click", (event) => {
+        event.stopPropagation();
+        withdrawDetachedImage(raw, index);
+      });
+      card.append(image, span, withdrawButton);
       imageList.append(card);
     });
   }
