@@ -9,7 +9,8 @@ The workbench keeps the proposal queue, freely scrollable original minutes, the
 current extracted proposal, and structured fields visible together. Clicking
 correct saves immediately and advances; reviewers can edit fields directly and
 click amended to save and advance without writing a separate correction note.
-Delete and newly added proposals still use the explicit save button. Missing
+Delete also saves immediately and advances; newly added proposals still use the
+explicit save button. Missing
 proposals can be created from selected source text or as a blank row. Drafts stay
 in browser local storage; reviewers return the CSV or JSONL download after checking the meeting.
 Export filenames include the Meeting Sheet row, date, committee, and meeting

@@ -643,7 +643,7 @@ function bindEvents() {
       if (row.added) return;
       const decision = button.dataset.decision;
       savePatch(row, { review: { decision, done: false } });
-      if (["correct", "amend"].includes(decision)) {
+      if (["correct", "amend", "delete"].includes(decision)) {
         confirmAndNext();
         return;
       }

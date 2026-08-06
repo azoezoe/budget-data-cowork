@@ -27,7 +27,9 @@ class MinutesBatchTest(unittest.TestCase):
                 self.assertTrue(page.exists())
                 self.assertTrue(data.exists())
                 self.assertTrue(source.exists())
-                self.assertIn(data.name, page.read_text(encoding="utf-8"))
+                page_text = page.read_text(encoding="utf-8")
+                self.assertIn(data.name, page_text)
+                self.assertIn("minutes.js?v=20260806-3", page_text)
                 payload = json.loads(data.read_text(encoding="utf-8"))
                 self.assertEqual(meeting["proposal_count"], len(payload["rows"]))
                 self.assertEqual(meeting["meeting_code"], payload["dataset"]["meeting_code"])
@@ -60,10 +62,19 @@ class MinutesBatchTest(unittest.TestCase):
     def test_common_review_decisions_save_immediately(self):
         script = (ROOT / "assets" / "minutes.js").read_text(encoding="utf-8")
         prototype = (ROOT / "minutes" / "20260610_traffic_11-5-23-18.html").read_text(encoding="utf-8")
-        self.assertIn('["correct", "amend"].includes(decision)', script)
+        self.assertIn('["correct", "amend", "delete"].includes(decision)', script)
         self.assertIn('["correct", "amend", "add"].includes(review.decision)', script)
         self.assertNotIn("correctionBlock", prototype)
         self.assertIn('data-decision="amend"><i data-lucide="pencil"></i>有修正', prototype)
+
+    def test_foreign_defense_first_row_can_be_deleted_without_required_fields(self):
+        payload = json.loads((ROOT / "data" / "minutes-review-42.json").read_text(encoding="utf-8"))
+        first = payload["rows"][0]
+        self.assertEqual(first["row_id"], "1")
+        self.assertEqual(first["fields"]["full_name"], "")
+        self.assertEqual(first["fields"]["result"], "")
+        script = (ROOT / "assets" / "minutes.js").read_text(encoding="utf-8")
+        self.assertIn('if (review.decision === "delete") return [];', script)
 
 
 if __name__ == "__main__":
