@@ -51,6 +51,12 @@ class MinutesBatchTest(unittest.TestCase):
         for field in ("source_sheet_row", "date", "committee", "meeting_code"):
             self.assertIn(f"dataset.{field}", script)
 
+    def test_result_uses_saved_section_boundaries(self):
+        script = (ROOT / "assets" / "minutes.js").read_text(encoding="utf-8")
+        for marker in ("resultDirty", "resultEdited", "setUserResult", "propagateResult"):
+            self.assertIn(marker, script)
+        self.assertIn("if (review.resultDirty || review.resultEdited) break;", script)
+
 
 if __name__ == "__main__":
     unittest.main()

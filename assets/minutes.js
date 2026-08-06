@@ -35,6 +35,8 @@ function currentReview(row) {
     note: "",
     fullNameDirty: false,
     fullNameEdited: false,
+    resultDirty: false,
+    resultEdited: false,
     ...(currentEdit(row).review || {}),
   };
 }
@@ -81,6 +83,26 @@ function propagateFullName(row, value) {
     if (review.fullNameDirty || review.fullNameEdited) break;
     if (currentFields(candidate).full_name === value) continue;
     savePatch(candidate, { fields: { full_name: value } });
+    count += 1;
+  }
+  return count;
+}
+
+function setUserResult(row, value) {
+  savePatch(row, {
+    fields: { result: value },
+    review: { resultDirty: true, done: false },
+  });
+}
+
+function propagateResult(row, value) {
+  const start = state.rows.indexOf(row);
+  let count = 0;
+  for (const candidate of state.rows.slice(start + 1)) {
+    const review = currentReview(candidate);
+    if (review.resultDirty || review.resultEdited) break;
+    if (currentFields(candidate).result === value) continue;
+    savePatch(candidate, { fields: { result: value } });
     count += 1;
   }
   return count;
@@ -422,25 +444,36 @@ function confirmAndNext() {
   }
   const index = state.rows.indexOf(row);
   const commitFullName = review.decision !== "delete" && review.fullNameDirty && Boolean((fields.full_name || "").trim());
+  const commitResult = review.decision !== "delete" && review.resultDirty && Boolean((fields.result || "").trim());
   savePatch(row, {
     review: {
       done: true,
       flagged: false,
       fullNameDirty: false,
       fullNameEdited: review.fullNameEdited || commitFullName,
+      resultDirty: false,
+      resultEdited: review.resultEdited || commitResult,
     },
   });
   const propagatedFullNames = commitFullName ? propagateFullName(row, fields.full_name) : 0;
+  const propagatedResults = commitResult ? propagateResult(row, fields.result) : 0;
   const next = state.rows.slice(index + 1).find((candidate) => ["pending", "flagged"].includes(rowStatus(candidate)))
     || state.rows.find((candidate) => ["pending", "flagged"].includes(rowStatus(candidate)));
   state.selectedKey = next ? rowKey(next) : rowKey(row);
   saveState();
   render();
+  const propagationMessages = [];
   if (commitFullName) {
-    showToast(propagatedFullNames
+    propagationMessages.push(propagatedFullNames
       ? `full_name 已套用到後續 ${propagatedFullNames} 筆`
       : "full_name 已儲存；下一個人工修改點維持不變");
   }
+  if (commitResult) {
+    propagationMessages.push(propagatedResults
+      ? `result 已套用到後續 ${propagatedResults} 筆`
+      : "result 已儲存；下一個人工修改點維持不變");
+  }
+  if (propagationMessages.length) showToast(propagationMessages.join("；"));
 }
 
 function splitCurrentRow() {
@@ -477,6 +510,7 @@ function addProposal(content = "") {
   fields["預算年度"] = "115";
   fields["內容"] = content;
   fields.full_name = current ? currentFields(current).full_name : "";
+  fields.result = current ? currentFields(current).result : "";
   const row = {
     row_id: id,
     source_row: "",
@@ -594,6 +628,7 @@ function bindEvents() {
     input.addEventListener(eventName, () => {
       const row = selectedRow();
       if (input.dataset.field === "full_name") setUserFullName(row, input.value);
+      else if (input.dataset.field === "result") setUserResult(row, input.value);
       else setField(row, input.dataset.field, input.value);
       if (["cost", "deleted", "frozen"].includes(input.dataset.field)) {
         document.querySelector(`[data-amount-preview="${input.dataset.field}"]`).textContent = formatAmount(input.value);

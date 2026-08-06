@@ -32,6 +32,9 @@ saves the row, that value is copied forward until the next row where a reviewer
 edits and saves a different `full_name`. Revisiting an earlier section only
 updates rows up to the next saved edit point.
 
+`result` follows the same section-value behavior: an edited and saved value is
+copied forward until the next saved manual `result` edit.
+
 Rebuild every unique meeting from the latest local processing outputs with:
 
 ```sh
