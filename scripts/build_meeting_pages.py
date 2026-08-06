@@ -124,6 +124,7 @@ def main() -> None:
             <span class="dataset"></span>
             <span class="row-id"></span>
           </div>
+          <div class="content-text"></div>
           <label>
             proposal_ID
             <input class="proposal-input" type="text">
@@ -141,7 +142,6 @@ def main() -> None:
             備註
             <textarea class="note-input" rows="2"></textarea>
           </label>
-          <div class="content-text"></div>
         </div>
       </article>
     </template>
@@ -150,7 +150,7 @@ def main() -> None:
       window.BUDGET_REVIEW_DATA = "../data/gazette-review.json";
       window.BUDGET_REVIEW_MEETING = "{html.escape(group['base'])}";
     </script>
-    <script src="../assets/app.js?v=20260805-3"></script>
+    <script src="../assets/app.js?v=20260806-1"></script>
   </body>
 </html>
 """

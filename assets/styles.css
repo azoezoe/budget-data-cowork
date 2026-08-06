@@ -302,9 +302,14 @@ textarea {
 }
 
 .edit-pane {
+  position: sticky;
+  top: 92px;
   display: grid;
   gap: 10px;
   align-content: start;
+  max-height: calc(100vh - 112px);
+  overflow: auto;
+  padding-right: 4px;
 }
 
 .row-head {
@@ -326,8 +331,10 @@ textarea {
 .content-text {
   white-space: pre-wrap;
   line-height: 1.65;
-  padding-top: 8px;
-  border-top: 1px solid #e5e7eb;
+  padding: 10px;
+  border: 1px solid #d8dee8;
+  border-radius: 6px;
+  background: #f8fafc;
 }
 
 @media (max-width: 920px) {
@@ -355,5 +362,11 @@ textarea {
 
   .image-pane {
     margin-bottom: 14px;
+  }
+
+  .edit-pane {
+    position: static;
+    max-height: none;
+    overflow: visible;
   }
 }

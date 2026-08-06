@@ -288,7 +288,12 @@ function matchingRows() {
     }),
     unmatchedImages: rows.filter((raw) => {
       const row = currentRow(raw);
-      return row.dataset.endsWith("_unmatch") && splitUrls(row.pdf).length && outputStatus(raw, row) !== "skip";
+      return (
+        row.dataset.endsWith("_unmatch") &&
+        splitUrls(row.pdf).length &&
+        !row.paired_to_proposal &&
+        outputStatus(raw, row) !== "skip"
+      );
     }),
     detachedImages,
   };
@@ -321,7 +326,7 @@ function renderPairingPanel() {
     button.className = `pair-item ${state.selectedProposalKey === key ? "selected" : ""}`;
     const pdfCount = splitUrls(row.pdf).length;
     button.innerHTML = paired
-      ? `<strong>${row.proposal_ID || "(無 proposal_ID)"} 已配 ${pdfCount} 張</strong><span>${row.content || ""}</span>`
+      ? `<strong>${row.proposal_ID || "(無 proposal_ID)"} 已配 ${pdfCount} 張，可繼續加圖</strong><span>${row.content || ""}</span>`
       : `<strong>${row.proposal_ID || "(無 proposal_ID)"}</strong><span>${row.content || ""}</span>`;
     button.addEventListener("click", () => {
       state.selectedProposalKey = key;
@@ -406,10 +411,14 @@ function applySelectedPair() {
   });
   if (isDetached) {
     saveEdit(imageRow, {
+      detached_pdf: [],
+      detached_used: true,
       note: appendNote(imageRow, [`原錯配圖片已配對到 proposal_ID ${proposalId}：${proposal.dataset} #${proposal.row_id}`, reviewerNote].filter(Boolean).join("\n")),
     });
   } else {
     saveEdit(imageRow, {
+      paired_to_proposal: state.selectedProposalKey,
+      status: "skip",
       note: appendNote(imageRow, [`已配對到 proposal_ID ${proposalId}：${proposal.dataset} #${proposal.row_id}`, reviewerNote].filter(Boolean).join("\n")),
     });
   }
