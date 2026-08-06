@@ -36,9 +36,10 @@ Rebuild every unique meeting from the latest local processing outputs with:
 python3 scripts/build_minutes_pages.py
 ```
 
-The batch builder skips zero-row datasets and later Meeting Sheet rows that reuse
-the same `meeting_code`. It writes the claim-list source to
-`data/minutes-manifest.json`.
+The batch builder reads the latest Meeting Sheet through its Apps Script CSV
+exporter. It skips rows whose `議事錄轉檔紀錄` is `y`, zero-row datasets, and
+later Meeting Sheet rows that reuse the same `meeting_code`. It writes the
+claim-list source to `data/minutes-manifest.json`.
 
 ## Gazette Review
 

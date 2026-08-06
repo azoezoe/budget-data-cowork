@@ -14,7 +14,7 @@ class MinutesBatchTest(unittest.TestCase):
 
     def test_manifest_contains_unique_nonempty_meetings(self):
         meetings = self.manifest["meetings"]
-        self.assertEqual(32, len(meetings))
+        self.assertEqual(22, len(meetings))
         self.assertEqual(len(meetings), len({item["meeting_code"] for item in meetings}))
         self.assertTrue(all(item["proposal_count"] > 0 for item in meetings))
 
@@ -41,6 +41,8 @@ class MinutesBatchTest(unittest.TestCase):
 
     def test_expected_skips_are_recorded(self):
         reasons = {item["directory"]: item["reason"] for item in self.manifest["skipped"]}
+        self.assertEqual("Meeting 議事錄轉檔紀錄 is y", reasons["4_20260506_finance_委員會-11-5-20-12"])
+        self.assertEqual("Meeting 議事錄轉檔紀錄 is y", reasons["19_20260527_economics_委員會-11-5-19-15"])
         self.assertEqual("duplicate of row 25", reasons["28_20260604_judiciary_委員會-11-5-36-16"])
         self.assertEqual("zero proposals", reasons["41_20260617_finance_委員會-11-5-20-19"])
 

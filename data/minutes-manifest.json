@@ -1,5 +1,6 @@
 {
   "schema": "minutes-review-manifest.v1",
+  "meeting_sheet_url": "https://script.google.com/macros/s/AKfycbzHA6BbzVSLeneX0zdiBl3kwtY3SiqUXzRSQIdfeVdfo36B8TSWMB9d4TslOXukOoSt/exec",
   "meetings": [
     {
       "source_sheet_row": "3",
@@ -14,156 +15,6 @@
       "ppg_url": "https://ppg.ly.gov.tw/ppg/sittings/2024112278/details?meetingDate=113/11/25",
       "doc_file": "https://lydata.ronny-s3.click/meet-proceeding-doc/%E5%A7%94%E5%93%A1%E6%9C%83-11-2-15-12.doc",
       "minutes_html_file": "https://lydata.ronny-s3.click/meet-proceeding-html/%E5%A7%94%E5%93%A1%E6%9C%83-11-2-15-12.html",
-      "source_kind": "dataly_html"
-    },
-    {
-      "source_sheet_row": "4",
-      "date": "2026/5/6",
-      "committee": "財政委員會",
-      "meeting_title": "第11屆第5會期財政委員會第12次全體委員會議",
-      "meeting_code": "委員會-11-5-20-12",
-      "proposal_count": 1,
-      "page": "minutes/20260506_finance_11-5-20-12.html",
-      "relative_url": "20260506_finance_11-5-20-12.html",
-      "review_url": "https://azoezoe.github.io/budget-data-cowork/minutes/20260506_finance_11-5-20-12.html",
-      "ppg_url": "https://ppg.ly.gov.tw/ppg/sittings/2026042988/details?meetingDate=115/05/06",
-      "doc_file": "https://lydata.ronny-s3.click/meet-proceeding-doc/%E5%A7%94%E5%93%A1%E6%9C%83-11-5-20-12.doc",
-      "minutes_html_file": "https://lydata.ronny-s3.click/meet-proceeding-html/%E5%A7%94%E5%93%A1%E6%9C%83-11-5-20-12.html",
-      "source_kind": "dataly_html"
-    },
-    {
-      "source_sheet_row": "5",
-      "date": "2026/5/11",
-      "committee": "交通委員會",
-      "meeting_title": "第11屆第5會期交通委員會第13次全體委員會議",
-      "meeting_code": "委員會-11-5-23-13",
-      "proposal_count": 56,
-      "page": "minutes/20260511_traffic_11-5-23-13.html",
-      "relative_url": "20260511_traffic_11-5-23-13.html",
-      "review_url": "https://azoezoe.github.io/budget-data-cowork/minutes/20260511_traffic_11-5-23-13.html",
-      "ppg_url": "https://ppg.ly.gov.tw/ppg/sittings/2026050620/details?meetingDate=115/05/11",
-      "doc_file": "https://lydata.ronny-s3.click/meet-proceeding-doc/%E5%A7%94%E5%93%A1%E6%9C%83-11-5-23-13.doc",
-      "minutes_html_file": "https://lydata.ronny-s3.click/meet-proceeding-html/%E5%A7%94%E5%93%A1%E6%9C%83-11-5-23-13.html",
-      "source_kind": "dataly_html"
-    },
-    {
-      "source_sheet_row": "6",
-      "date": "2026/5/18",
-      "committee": "外交及國防委員會",
-      "meeting_title": "第11屆第5會期外交及國防委員會第17次全體委員會議",
-      "meeting_code": "委員會-11-5-35-17",
-      "proposal_count": 62,
-      "page": "minutes/20260518_foreign_defense_11-5-35-17.html",
-      "relative_url": "20260518_foreign_defense_11-5-35-17.html",
-      "review_url": "https://azoezoe.github.io/budget-data-cowork/minutes/20260518_foreign_defense_11-5-35-17.html",
-      "ppg_url": "https://ppg.ly.gov.tw/ppg/sittings/2026051350/details?meetingDate=115/05/18",
-      "doc_file": "https://lydata.ronny-s3.click/meet-proceeding-doc/%E5%A7%94%E5%93%A1%E6%9C%83-11-5-35-17.doc",
-      "minutes_html_file": "https://lydata.ronny-s3.click/meet-proceeding-html/%E5%A7%94%E5%93%A1%E6%9C%83-11-5-35-17.html",
-      "source_kind": "dataly_html"
-    },
-    {
-      "source_sheet_row": "7",
-      "date": "2026/5/18",
-      "committee": "教育及文化委員會",
-      "meeting_title": "第11屆第5會期教育及文化委員會第10次全體委員會議",
-      "meeting_code": "委員會-11-5-22-10",
-      "proposal_count": 9,
-      "page": "minutes/20260518_education_culture_11-5-22-10.html",
-      "relative_url": "20260518_education_culture_11-5-22-10.html",
-      "review_url": "https://azoezoe.github.io/budget-data-cowork/minutes/20260518_education_culture_11-5-22-10.html",
-      "ppg_url": "https://ppg.ly.gov.tw/ppg/sittings/2026051242/details?meetingDate=115/05/18",
-      "doc_file": "https://lydata.ronny-s3.click/meet-proceeding-doc/%E5%A7%94%E5%93%A1%E6%9C%83-11-5-22-10.doc",
-      "minutes_html_file": "https://lydata.ronny-s3.click/meet-proceeding-html/%E5%A7%94%E5%93%A1%E6%9C%83-11-5-22-10.html",
-      "source_kind": "dataly_html"
-    },
-    {
-      "source_sheet_row": "8",
-      "date": "2026/5/18",
-      "committee": "司法及法制委員會",
-      "meeting_title": "第11屆第5會期司法及法制委員會第14次全體委員會議",
-      "meeting_code": "委員會-11-5-36-14",
-      "proposal_count": 151,
-      "page": "minutes/20260518_judiciary_11-5-36-14.html",
-      "relative_url": "20260518_judiciary_11-5-36-14.html",
-      "review_url": "https://azoezoe.github.io/budget-data-cowork/minutes/20260518_judiciary_11-5-36-14.html",
-      "ppg_url": "https://ppg.ly.gov.tw/ppg/sittings/2026051460/details?meetingDate=115/05/18",
-      "doc_file": "https://lydata.ronny-s3.click/meet-proceeding-doc/%E5%A7%94%E5%93%A1%E6%9C%83-11-5-36-14.doc",
-      "minutes_html_file": "https://lydata.ronny-s3.click/meet-proceeding-html/%E5%A7%94%E5%93%A1%E6%9C%83-11-5-36-14.html",
-      "source_kind": "dataly_html"
-    },
-    {
-      "source_sheet_row": "11",
-      "date": "2026/5/20",
-      "committee": "交通委員會",
-      "meeting_title": "第11屆第5會期交通委員會第14次全體委員會議",
-      "meeting_code": "委員會-11-5-23-14",
-      "proposal_count": 39,
-      "page": "minutes/20260520_traffic_11-5-23-14.html",
-      "relative_url": "20260520_traffic_11-5-23-14.html",
-      "review_url": "https://azoezoe.github.io/budget-data-cowork/minutes/20260520_traffic_11-5-23-14.html",
-      "ppg_url": "https://ppg.ly.gov.tw/ppg/sittings/2026051237/details?meetingDate=115/05/20",
-      "doc_file": "https://lydata.ronny-s3.click/meet-proceeding-doc/%E5%A7%94%E5%93%A1%E6%9C%83-11-5-23-14.doc",
-      "minutes_html_file": "https://lydata.ronny-s3.click/meet-proceeding-html/%E5%A7%94%E5%93%A1%E6%9C%83-11-5-23-14.html",
-      "source_kind": "dataly_html"
-    },
-    {
-      "source_sheet_row": "12",
-      "date": "2026/5/20",
-      "committee": "社會福利及衛生環境委員會",
-      "meeting_title": "第11屆第5會期社會福利及衛生環境委員會第11次全體委員會議",
-      "meeting_code": "委員會-11-5-26-11",
-      "proposal_count": 383,
-      "page": "minutes/20260520_social_welfare_health_environment_11-5-26-11.html",
-      "relative_url": "20260520_social_welfare_health_environment_11-5-26-11.html",
-      "review_url": "https://azoezoe.github.io/budget-data-cowork/minutes/20260520_social_welfare_health_environment_11-5-26-11.html",
-      "ppg_url": "https://ppg.ly.gov.tw/ppg/sittings/2026051356/details?meetingDate=115/05/20",
-      "doc_file": "https://lydata.ronny-s3.click/meet-proceeding-doc/%E5%A7%94%E5%93%A1%E6%9C%83-11-5-26-11.doc",
-      "minutes_html_file": "https://lydata.ronny-s3.click/meet-proceeding-html/%E5%A7%94%E5%93%A1%E6%9C%83-11-5-26-11.html",
-      "source_kind": "dataly_html"
-    },
-    {
-      "source_sheet_row": "15",
-      "date": "2026/5/25",
-      "committee": "交通委員會",
-      "meeting_title": "第11屆第5會期交通委員會第15次全體委員會議",
-      "meeting_code": "委員會-11-5-23-15",
-      "proposal_count": 114,
-      "page": "minutes/20260525_traffic_11-5-23-15.html",
-      "relative_url": "20260525_traffic_11-5-23-15.html",
-      "review_url": "https://azoezoe.github.io/budget-data-cowork/minutes/20260525_traffic_11-5-23-15.html",
-      "ppg_url": "https://ppg.ly.gov.tw/ppg/sittings/2026052086/details?meetingDate=115/05/25",
-      "doc_file": "https://lydata.ronny-s3.click/meet-proceeding-doc/%E5%A7%94%E5%93%A1%E6%9C%83-11-5-23-15.doc",
-      "minutes_html_file": "https://lydata.ronny-s3.click/meet-proceeding-html/%E5%A7%94%E5%93%A1%E6%9C%83-11-5-23-15.html",
-      "source_kind": "dataly_html"
-    },
-    {
-      "source_sheet_row": "16",
-      "date": "2026/5/25",
-      "committee": "司法及法制委員會",
-      "meeting_title": "第11屆第5會期司法及法制委員會第15次全體委員會議",
-      "meeting_code": "委員會-11-5-36-15",
-      "proposal_count": 168,
-      "page": "minutes/20260525_judiciary_11-5-36-15.html",
-      "relative_url": "20260525_judiciary_11-5-36-15.html",
-      "review_url": "https://azoezoe.github.io/budget-data-cowork/minutes/20260525_judiciary_11-5-36-15.html",
-      "ppg_url": "https://ppg.ly.gov.tw/ppg/sittings/2026051971/details?meetingDate=115/05/25",
-      "doc_file": "https://lydata.ronny-s3.click/meet-proceeding-doc/%E5%A7%94%E5%93%A1%E6%9C%83-11-5-36-15.doc",
-      "minutes_html_file": "https://lydata.ronny-s3.click/meet-proceeding-html/%E5%A7%94%E5%93%A1%E6%9C%83-11-5-36-15.html",
-      "source_kind": "dataly_html"
-    },
-    {
-      "source_sheet_row": "19",
-      "date": "2026/5/27",
-      "committee": "經濟委員會",
-      "meeting_title": "第11屆第5會期經濟委員會第15次全體委員會議",
-      "meeting_code": "委員會-11-5-19-15",
-      "proposal_count": 385,
-      "page": "minutes/20260527_economics_11-5-19-15.html",
-      "relative_url": "20260527_economics_11-5-19-15.html",
-      "review_url": "https://azoezoe.github.io/budget-data-cowork/minutes/20260527_economics_11-5-19-15.html",
-      "ppg_url": "https://ppg.ly.gov.tw/ppg/sittings/2026052075/details?meetingDate=115/05/27",
-      "doc_file": "https://lydata.ronny-s3.click/meet-proceeding-doc/%E5%A7%94%E5%93%A1%E6%9C%83-11-5-19-15.doc",
-      "minutes_html_file": "https://lydata.ronny-s3.click/meet-proceeding-html/%E5%A7%94%E5%93%A1%E6%9C%83-11-5-19-15.html",
       "source_kind": "dataly_html"
     },
     {
@@ -389,7 +240,7 @@
       "ppg_url": "https://ppg.ly.gov.tw/ppg/sittings/2026061881/details?meetingDate=115/06/24",
       "doc_file": "https://lydata.ronny-s3.click/meet-proceeding-doc/%E5%A7%94%E5%93%A1%E6%9C%83-11-5-23-20.doc",
       "minutes_html_file": "https://lydata.ronny-s3.click/meet-proceeding-html/%E5%A7%94%E5%93%A1%E6%9C%83-11-5-23-20.html",
-      "source_kind": "docx_fallback: TimeoutError"
+      "source_kind": "docx_fallback: cached"
     },
     {
       "source_sheet_row": "49",
@@ -483,6 +334,46 @@
     }
   ],
   "skipped": [
+    {
+      "directory": "4_20260506_finance_委員會-11-5-20-12",
+      "reason": "Meeting 議事錄轉檔紀錄 is y"
+    },
+    {
+      "directory": "5_20260511_traffic_委員會-11-5-23-13",
+      "reason": "Meeting 議事錄轉檔紀錄 is y"
+    },
+    {
+      "directory": "6_20260518_foreign_defense_委員會-11-5-35-17",
+      "reason": "Meeting 議事錄轉檔紀錄 is y"
+    },
+    {
+      "directory": "7_20260518_education_culture_委員會-11-5-22-10",
+      "reason": "Meeting 議事錄轉檔紀錄 is y"
+    },
+    {
+      "directory": "8_20260518_judiciary_委員會-11-5-36-14",
+      "reason": "Meeting 議事錄轉檔紀錄 is y"
+    },
+    {
+      "directory": "11_20260520_traffic_委員會-11-5-23-14",
+      "reason": "Meeting 議事錄轉檔紀錄 is y"
+    },
+    {
+      "directory": "12_20260520_social_welfare_health_environment_委員會-11-5-26-11",
+      "reason": "Meeting 議事錄轉檔紀錄 is y"
+    },
+    {
+      "directory": "15_20260525_traffic_委員會-11-5-23-15",
+      "reason": "Meeting 議事錄轉檔紀錄 is y"
+    },
+    {
+      "directory": "16_20260525_judiciary_委員會-11-5-36-15",
+      "reason": "Meeting 議事錄轉檔紀錄 is y"
+    },
+    {
+      "directory": "19_20260527_economics_委員會-11-5-19-15",
+      "reason": "Meeting 議事錄轉檔紀錄 is y"
+    },
     {
       "directory": "28_20260604_judiciary_委員會-11-5-36-16",
       "reason": "duplicate of row 25"

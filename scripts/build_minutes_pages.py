@@ -4,12 +4,15 @@
 from __future__ import annotations
 
 import argparse
+import csv
 import html
+import io
 import json
 import re
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from urllib.parse import quote
+from urllib.request import Request, urlopen
 
 from build_minutes_review_data import (
     build_remote_source_html,
@@ -23,10 +26,28 @@ ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_PROCESSING_ROOT = ROOT.parent / "115" / "processing" / "meeting_minutes_newflow"
 PROTOTYPE = ROOT / "minutes" / "20260610_traffic_11-5-23-18.html"
 PAGES_BASE_URL = "https://azoezoe.github.io/budget-data-cowork"
+DEFAULT_MEETING_SHEET_URL = (
+    "https://script.google.com/macros/s/"
+    "AKfycbzHA6BbzVSLeneX0zdiBl3kwtY3SiqUXzRSQIdfeVdfo36B8TSWMB9d4TslOXukOoSt/exec"
+)
 
 
 def source_url(meeting_code: str) -> str:
     return f"https://lydata.ronny-s3.click/meet-proceeding-html/{quote(meeting_code)}.html"
+
+
+def completed_minutes_rows(sheet_url: str) -> set[str]:
+    if not sheet_url:
+        return set()
+    request = Request(sheet_url, headers={"User-Agent": "Mozilla/5.0 budget-cowork/1.0"})
+    with urlopen(request, timeout=60) as response:
+        text = response.read().decode("utf-8-sig")
+    rows = csv.DictReader(io.StringIO(text))
+    return {
+        str(sheet_row)
+        for sheet_row, row in enumerate(rows, start=2)
+        if (row.get("議事錄轉檔紀錄", "") or "").strip().lower() == "y"
+    }
 
 
 def slug_for(directory: Path, meeting_code: str) -> str:
@@ -99,12 +120,16 @@ def build_one(item: dict, prototype: str) -> dict:
     slug = item["slug"]
     remote_url = source_url(metadata["meeting_code"])
     source_output = ROOT / "sources" / f"{slug}.html"
-    source_kind = "dataly_html"
-    try:
-        build_remote_source_html(remote_url, source_output, metadata.get("meeting_title", ""))
-    except Exception as error:
-        source_kind = f"docx_fallback: {type(error).__name__}"
-        build_source_html(directory / "source.converted.docx", source_output, metadata.get("meeting_title", ""))
+    if source_output.exists() and source_output.stat().st_size:
+        source_text = source_output.read_text(encoding="utf-8")
+        source_kind = "dataly_html" if "data-source-block" in source_text else "docx_fallback: cached"
+    else:
+        source_kind = "dataly_html"
+        try:
+            build_remote_source_html(remote_url, source_output, metadata.get("meeting_title", ""))
+        except Exception as error:
+            source_kind = f"docx_fallback: {type(error).__name__}"
+            build_source_html(directory / "source.converted.docx", source_output, metadata.get("meeting_title", ""))
 
     payload = build_review_payload(
         directory / "Proposal_draft_filled.csv",
@@ -140,11 +165,13 @@ def build_one(item: dict, prototype: str) -> dict:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--processing-root", type=Path, default=DEFAULT_PROCESSING_ROOT)
+    parser.add_argument("--meeting-sheet-url", default=DEFAULT_MEETING_SHEET_URL)
     parser.add_argument("--workers", type=int, default=6)
     args = parser.parse_args()
 
     prototype = PROTOTYPE.read_text(encoding="utf-8")
     seen_codes: dict[str, str] = {}
+    completed_rows = completed_minutes_rows(args.meeting_sheet_url)
     candidates = []
     skipped = []
     directories = sorted(
@@ -160,6 +187,10 @@ def main() -> None:
             skipped.append({"directory": directory.name, "reason": f"missing: {', '.join(missing)}"})
             continue
         metadata = json.loads((directory / "metadata.json").read_text(encoding="utf-8"))
+        source_sheet_row = metadata.get("來源列號", "")
+        if source_sheet_row in completed_rows:
+            skipped.append({"directory": directory.name, "reason": "Meeting 議事錄轉檔紀錄 is y"})
+            continue
         meeting_code = metadata.get("meeting_code", "")
         proposal_count = len(read_csv(directory / "Proposal_draft_filled.csv"))
         if not proposal_count:
@@ -180,7 +211,12 @@ def main() -> None:
             print(f"built row {meeting['source_sheet_row']}: {meeting['proposal_count']} proposals")
 
     meetings.sort(key=lambda item: int(item["source_sheet_row"]))
-    manifest = {"schema": "minutes-review-manifest.v1", "meetings": meetings, "skipped": skipped}
+    manifest = {
+        "schema": "minutes-review-manifest.v1",
+        "meeting_sheet_url": args.meeting_sheet_url,
+        "meetings": meetings,
+        "skipped": skipped,
+    }
     (ROOT / "data" / "minutes-manifest.json").write_text(
         json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8"
     )
