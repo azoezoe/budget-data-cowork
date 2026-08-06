@@ -66,12 +66,30 @@ function appendNote(row, text) {
   return existing ? `${existing}\n${text}` : text;
 }
 
+function normalizedLength(value) {
+  return String(value || "").replace(/[\W_]+/g, "").length;
+}
+
+function hasCaseLabel(value) {
+  return /【[^】]*\d[^】]*】/.test(String(value || ""));
+}
+
+function matchRiskReasons(row) {
+  const reasons = [];
+  const urls = splitUrls(row.pdf);
+  if (!row.dataset.endsWith("_matched") || !urls.length) return reasons;
+  if (!row.proposal_ID && hasCaseLabel(row.content)) reasons.push("無 proposal_ID，以括號數字配圖");
+  if (normalizedLength(row.content) < 80) reasons.push("文字短");
+  if (urls.length > 1) reasons.push(`多圖 ${urls.length} 張`);
+  return reasons;
+}
+
 function imageCandidateKey(row) {
   return `image:${rowKey(row)}`;
 }
 
-function detachedCandidateKey(row) {
-  return `detached:${rowKey(row)}`;
+function detachedCandidateKey(row, index = 0) {
+  return `detached:${rowKey(row)}::${index}`;
 }
 
 function saveEdit(row, patch) {
@@ -128,7 +146,7 @@ function getFilteredRows(rows = reviewRows()) {
   });
 }
 
-function renderImages(container, row) {
+function renderImages(container, row, options = {}) {
   container.textContent = "";
   const urls = splitUrls(row.pdf);
   if (!urls.length) {
@@ -151,6 +169,17 @@ function renderImages(container, row) {
     link.rel = "noreferrer";
     link.textContent = url;
     card.append(image, link);
+    if (options.onWrongImage) {
+      const actions = document.createElement("div");
+      actions.className = "image-card-actions";
+      const wrongButton = document.createElement("button");
+      wrongButton.type = "button";
+      wrongButton.className = "secondary";
+      wrongButton.textContent = "這張錯誤，進配對池";
+      wrongButton.addEventListener("click", () => options.onWrongImage(url));
+      actions.append(wrongButton);
+      card.append(actions);
+    }
     container.append(card);
   }
 }
@@ -166,20 +195,28 @@ function renderRows() {
     const node = template.content.firstElementChild.cloneNode(true);
     node.querySelector(".dataset").textContent = row.dataset;
     node.querySelector(".row-id").textContent = `#${row.row_id}`;
+    const riskTag = node.querySelector(".risk-tag");
+    const riskReasons = matchRiskReasons(row);
+    riskTag.hidden = !riskReasons.length;
+    riskTag.textContent = riskReasons.length ? `高風險：${riskReasons.join("、")}` : "";
     node.querySelector(".proposal-input").value = row.proposal_ID || "";
     node.querySelector(".pdf-input").value = splitUrls(row.pdf).join("\n");
     node.querySelector(".done-input").checked = Boolean(row.done || row.status === "ok");
     node.querySelector(".note-input").value = row.note || "";
     node.querySelector(".content-text").textContent = row.content || "";
-    node.querySelector(".wrong-image-button").hidden = !row.dataset.endsWith("_matched") || !splitUrls(row.pdf).length;
-    renderImages(node.querySelector(".image-pane"), row);
+    node.querySelector(".wrong-image-button").hidden = !row.dataset.endsWith("_matched") || splitUrls(row.pdf).length < 2;
+    renderImages(node.querySelector(".image-pane"), row, {
+      onWrongImage: row.dataset.endsWith("_matched") ? (url) => moveWrongImageToPool(raw, url) : null,
+    });
 
     node.querySelector(".proposal-input").addEventListener("input", (event) => {
       saveEdit(raw, { proposal_ID: event.target.value, status: "change_proposal" });
     });
     node.querySelector(".pdf-input").addEventListener("input", (event) => {
       saveEdit(raw, { pdf: splitUrls(event.target.value), status: "change_image" });
-      renderImages(node.querySelector(".image-pane"), currentRow(raw));
+      renderImages(node.querySelector(".image-pane"), currentRow(raw), {
+        onWrongImage: row.dataset.endsWith("_matched") ? (url) => moveWrongImageToPool(raw, url) : null,
+      });
     });
     node.querySelector(".done-input").addEventListener("change", (event) => {
       saveEdit(raw, {
@@ -207,7 +244,7 @@ function renderRows() {
 function updateSummary() {
   const pending = reviewRows().length;
   const { missingProposals, unmatchedImages, detachedImages } = matchingRows();
-  const imageCount = unmatchedImages.length + detachedImages.length;
+  const imageCount = unmatchedImages.length + detachedImages.reduce((sum, raw) => sum + splitUrls(currentRow(raw).detached_pdf).length, 0);
   document.querySelector("#summary").textContent =
     pending > 0
       ? `第一段待確認 ${pending} 筆；完成後進入配對池`
@@ -262,6 +299,9 @@ function exportRows() {
       status: outputStatus(raw, row),
       done: Boolean(row.done),
       pair_pool: Boolean(row.pair_pool),
+      detached_pdf: splitUrls(row.detached_pdf),
+      paired_from_pool: Boolean(row.paired_from_pool),
+      paired_to_proposal: row.paired_to_proposal || "",
       note: row.note || "",
     };
   });
@@ -307,7 +347,7 @@ function renderPairingPanel() {
   if (pending > 0) return;
 
   const { missingProposals, pairedProposals, unmatchedImages, detachedImages } = matchingRows();
-  const imageCount = unmatchedImages.length + detachedImages.length;
+  const imageCount = unmatchedImages.length + detachedImages.reduce((sum, raw) => sum + splitUrls(currentRow(raw).detached_pdf).length, 0);
   document.querySelector("#pairingSummary").textContent =
     `${missingProposals.length} 筆文字待配對，${pairedProposals.length} 筆文字已配對，${imageCount} 張圖片待配對`;
 
@@ -365,22 +405,24 @@ function renderPairingPanel() {
 
   for (const raw of detachedImages) {
     const row = currentRow(raw);
-    const key = detachedCandidateKey(raw);
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = `pair-item image-choice ${state.selectedImageKey === key ? "selected" : ""}`;
-    const image = document.createElement("img");
-    image.src = splitUrls(row.detached_pdf)[0];
-    image.loading = "lazy";
-    image.alt = "待重新配對圖片";
-    const span = document.createElement("span");
-    span.textContent = `原本配到 proposal_ID ${row.proposal_ID || ""}\n${splitUrls(row.detached_pdf).join("\n")}`;
-    button.append(image, span);
-    button.addEventListener("click", () => {
-      state.selectedImageKey = key;
-      renderPairingPanel();
+    splitUrls(row.detached_pdf).forEach((url, index) => {
+      const key = detachedCandidateKey(raw, index);
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = `pair-item image-choice ${state.selectedImageKey === key ? "selected" : ""}`;
+      const image = document.createElement("img");
+      image.src = url;
+      image.loading = "lazy";
+      image.alt = "待重新配對圖片";
+      const span = document.createElement("span");
+      span.textContent = `原本配到 proposal_ID ${row.proposal_ID || ""}\n${url}`;
+      button.append(image, span);
+      button.addEventListener("click", () => {
+        state.selectedImageKey = key;
+        renderPairingPanel();
+      });
+      imageList.append(button);
     });
-    imageList.append(button);
   }
 
   document.querySelector("#applyPair").disabled = !state.selectedProposalKey || !state.selectedImageKey;
@@ -391,10 +433,13 @@ function applySelectedPair() {
   if (!proposal || !state.selectedImageKey) return;
   const imageKey = state.selectedImageKey;
   const isDetached = imageKey.startsWith("detached:");
-  const sourceKey = imageKey.replace(/^image:/, "").replace(/^detached:/, "");
+  const detachedMatch = imageKey.match(/^detached:(.+)::(\d+)$/);
+  const sourceKey = isDetached && detachedMatch ? detachedMatch[1] : imageKey.replace(/^image:/, "");
   const imageRow = findRawByKey(sourceKey);
   if (!imageRow) return;
-  const imageUrls = isDetached ? splitUrls(currentRow(imageRow).detached_pdf) : splitUrls(currentRow(imageRow).pdf);
+  const detachedUrls = splitUrls(currentRow(imageRow).detached_pdf);
+  const detachedIndex = detachedMatch ? Number(detachedMatch[2]) : 0;
+  const imageUrls = isDetached ? detachedUrls.slice(detachedIndex, detachedIndex + 1) : splitUrls(currentRow(imageRow).pdf);
   const currentProposal = currentRow(proposal);
   const nextImageUrls = [...new Set([...splitUrls(currentProposal.pdf), ...imageUrls])];
   const proposalId = currentRow(proposal).proposal_ID || "";
@@ -410,9 +455,10 @@ function applySelectedPair() {
     note: appendNote(proposal, [sourceNote, reviewerNote].filter(Boolean).join("\n")),
   });
   if (isDetached) {
+    const remainingDetached = detachedUrls.filter((_, index) => index !== detachedIndex);
     saveEdit(imageRow, {
-      detached_pdf: [],
-      detached_used: true,
+      detached_pdf: remainingDetached,
+      detached_used: remainingDetached.length === 0,
       note: appendNote(imageRow, [`原錯配圖片已配對到 proposal_ID ${proposalId}：${proposal.dataset} #${proposal.row_id}`, reviewerNote].filter(Boolean).join("\n")),
     });
   } else {
@@ -428,18 +474,22 @@ function applySelectedPair() {
   renderRows();
 }
 
-function moveWrongImageToPool(raw) {
+function moveWrongImageToPool(raw, wrongUrl = null) {
   const row = currentRow(raw);
   const urls = splitUrls(row.pdf);
   if (!urls.length) return;
+  const wrongUrls = wrongUrl ? urls.filter((url) => url === wrongUrl) : urls;
+  if (!wrongUrls.length) return;
+  const keptUrls = wrongUrl ? urls.filter((url) => url !== wrongUrl) : [];
+  const detachedUrls = [...splitUrls(row.detached_pdf), ...wrongUrls];
   saveEdit(raw, {
-    pdf: [],
-    detached_pdf: urls,
+    pdf: keptUrls,
+    detached_pdf: detachedUrls,
     detached_used: false,
-    pair_pool: true,
+    pair_pool: keptUrls.length === 0,
     done: false,
     status: "change_image",
-    note: appendNote(raw, "圖片錯誤，已移入配對池"),
+    note: appendNote(raw, wrongUrl ? `圖片錯誤，已移入配對池：${wrongUrl}` : "圖片錯誤，已移入配對池"),
   });
   renderRows();
 }
@@ -531,7 +581,7 @@ async function init() {
     );
   });
   document.querySelector("#downloadCsv").addEventListener("click", () => {
-    const headers = ["dataset", "row_id", "proposal_ID", "pdf", "status", "done", "pair_pool", "note"];
+    const headers = ["dataset", "row_id", "proposal_ID", "pdf", "status", "done", "pair_pool", "detached_pdf", "paired_from_pool", "paired_to_proposal", "note"];
     const rows = exportRows().map((row) => headers.map((header) => csvEscape(row[header])).join(","));
     download("review-output.csv", `${headers.join(",")}\n${rows.join("\n")}\n`, "text/csv;charset=utf-8");
   });

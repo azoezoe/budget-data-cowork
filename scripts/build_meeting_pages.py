@@ -123,6 +123,7 @@ def main() -> None:
           <div class="row-head">
             <span class="dataset"></span>
             <span class="row-id"></span>
+            <span class="risk-tag" hidden></span>
           </div>
           <div class="content-text"></div>
           <label>
@@ -150,7 +151,7 @@ def main() -> None:
       window.BUDGET_REVIEW_DATA = "../data/gazette-review.json";
       window.BUDGET_REVIEW_MEETING = "{html.escape(group['base'])}";
     </script>
-    <script src="../assets/app.js?v=20260806-1"></script>
+    <script src="../assets/app.js?v=20260806-2"></script>
   </body>
 </html>
 """

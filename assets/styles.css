@@ -294,6 +294,18 @@ textarea {
   font-size: 12px;
 }
 
+.image-card-actions {
+  display: flex;
+  justify-content: flex-end;
+  padding: 8px;
+  border-top: 1px solid #d8dee8;
+  background: #ffffff;
+}
+
+.image-card-actions button {
+  font-size: 13px;
+}
+
 .no-image {
   padding: 18px;
   border: 1px dashed #94a3b8;
@@ -326,6 +338,14 @@ textarea {
   border-radius: 999px;
   background: #e6f6f2;
   color: #0f766e;
+}
+
+.risk-tag {
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: #fef3c7;
+  color: #92400e;
+  font-weight: 700;
 }
 
 .content-text {
