@@ -329,8 +329,6 @@ function renderCurrent() {
   }
 
   document.querySelector("#reviewNote").value = review.note || "";
-  document.querySelector("#correctionNote").value = review.correction || "";
-  document.querySelector("#correctionBlock").hidden = review.decision !== "amend";
   for (const button of document.querySelectorAll("#reviewDecisionControl button")) {
     button.classList.toggle("active", button.dataset.decision === review.decision);
     button.disabled = button.dataset.decision === "add" ? !row.added : Boolean(row.added);
@@ -424,15 +422,10 @@ function confirmAndNext() {
   const review = currentReview(row);
   const fields = currentFields(row);
   if (!review.decision) {
-    showToast("請先選擇無誤、要修正或刪除");
+    showToast("請先選擇無誤、有修正或刪除");
     return;
   }
-  if (review.decision === "amend" && !review.correction.trim()) {
-    showToast("請寫下要修改的欄位或正確內容");
-    document.querySelector("#correctionNote").focus();
-    return;
-  }
-  const blocking = ["correct", "add"].includes(review.decision)
+  const blocking = ["correct", "amend", "add"].includes(review.decision)
     ? issueList(row).filter((issue) => issue.blocking)
     : [];
   if (blocking.length) {
@@ -648,9 +641,13 @@ function bindEvents() {
     button.addEventListener("click", () => {
       const row = selectedRow();
       if (row.added) return;
-      savePatch(row, { review: { decision: button.dataset.decision, done: false } });
+      const decision = button.dataset.decision;
+      savePatch(row, { review: { decision, done: false } });
+      if (["correct", "amend"].includes(decision)) {
+        confirmAndNext();
+        return;
+      }
       render();
-      if (button.dataset.decision === "amend") document.querySelector("#correctionNote").focus();
     });
   }
   document.querySelector("#fixCurrentYear").addEventListener("click", () => {
@@ -673,9 +670,6 @@ function bindEvents() {
     if (!row.suggested_full_name) return;
     setUserFullName(row, row.suggested_full_name);
     render();
-  });
-  document.querySelector("#correctionNote").addEventListener("input", (event) => {
-    savePatch(selectedRow(), { review: { correction: event.target.value } });
   });
   document.querySelector("#reviewNote").addEventListener("input", (event) => {
     savePatch(selectedRow(), { review: { note: event.target.value } });

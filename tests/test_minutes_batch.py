@@ -57,6 +57,14 @@ class MinutesBatchTest(unittest.TestCase):
             self.assertIn(marker, script)
         self.assertIn("if (review.resultDirty || review.resultEdited) break;", script)
 
+    def test_common_review_decisions_save_immediately(self):
+        script = (ROOT / "assets" / "minutes.js").read_text(encoding="utf-8")
+        prototype = (ROOT / "minutes" / "20260610_traffic_11-5-23-18.html").read_text(encoding="utf-8")
+        self.assertIn('["correct", "amend"].includes(decision)', script)
+        self.assertIn('["correct", "amend", "add"].includes(review.decision)', script)
+        self.assertNotIn("correctionBlock", prototype)
+        self.assertIn('data-decision="amend"><i data-lucide="pencil"></i>有修正', prototype)
+
 
 if __name__ == "__main__":
     unittest.main()

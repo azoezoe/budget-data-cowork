@@ -41,7 +41,7 @@
         </div>
         <div id="filterTabs" class="segmented filter-tabs" aria-label="資料篩選">
           <button type="button" data-filter="pending" class="active">待判斷</button>
-          <button type="button" data-filter="amend">要修正</button>
+          <button type="button" data-filter="amend">有修正</button>
           <button type="button" data-filter="done">已處理</button>
           <button type="button" data-filter="all">全部</button>
         </div>
@@ -97,13 +97,11 @@
           <legend>校對判斷</legend>
           <div id="reviewDecisionControl" class="segmented decision-control">
             <button type="button" data-decision="correct"><i data-lucide="check"></i>無誤</button>
-            <button type="button" data-decision="amend"><i data-lucide="pencil"></i>要修正</button>
+            <button type="button" data-decision="amend"><i data-lucide="pencil"></i>有修正</button>
             <button type="button" data-decision="delete"><i data-lucide="trash-2"></i>刪除</button>
             <button type="button" data-decision="add"><i data-lucide="plus"></i>新增</button>
           </div>
         </fieldset>
-        <label id="correctionBlock" class="correction-block" hidden>要改哪裡<textarea id="correctionNote" rows="3" placeholder="欄位、正確內容或交接說明"></textarea></label>
-
         <div class="field-grid three">
           <label>序號<input data-field="序號" type="text"></label>
           <label>預算年度<div class="input-action"><input data-field="預算年度" inputmode="numeric" type="text"><button id="fixCurrentYear" type="button" title="設為 115">115</button></div></label>

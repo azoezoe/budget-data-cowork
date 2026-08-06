@@ -6,10 +6,12 @@ Static review pages for budget proposal gazette image matching.
 
 Open `minutes/index.html` through a local web server, then choose a meeting.
 The workbench keeps the proposal queue, freely scrollable original minutes, the
-current extracted proposal, and structured fields visible together. Reviewers
-mark each row as correct, needs amendment, or delete. Missing proposals can be
-created from selected source text or as a blank row. Drafts stay in browser local
-storage; reviewers return the CSV or JSONL download after checking the meeting.
+current extracted proposal, and structured fields visible together. Clicking
+correct saves immediately and advances; reviewers can edit fields directly and
+click amended to save and advance without writing a separate correction note.
+Delete and newly added proposals still use the explicit save button. Missing
+proposals can be created from selected source text or as a blank row. Drafts stay
+in browser local storage; reviewers return the CSV or JSONL download after checking the meeting.
 Export filenames include the Meeting Sheet row, date, committee, and meeting
 code, for example `minutes-review-33_20260610_交通委員會_11-5-23-18.jsonl`.
 
