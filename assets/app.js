@@ -359,7 +359,7 @@ function imageChoiceCard(key) {
   card.setAttribute("role", "button");
   card.setAttribute("aria-pressed", state.selectedImageKeys.has(key) ? "true" : "false");
   function toggleFromEvent(event) {
-    if (event.target.closest(".gazette-text")) return;
+    if (event.target.closest(".gazette-text-button")) return;
     toggleSelectedImage(key);
     renderPairingPanel();
   }
@@ -372,16 +372,56 @@ function imageChoiceCard(key) {
   return card;
 }
 
-function appendGazetteText(container, content, label = "公報文字") {
+function ensureGazetteDrawer() {
+  let drawer = document.querySelector("#gazetteTextDrawer");
+  if (drawer) return drawer;
+  drawer = document.createElement("aside");
+  drawer.id = "gazetteTextDrawer";
+  drawer.className = "gazette-drawer";
+  drawer.hidden = true;
+  drawer.innerHTML = `
+    <div class="gazette-drawer-backdrop" data-close-gazette></div>
+    <section class="gazette-drawer-panel" aria-label="公報文字">
+      <div class="gazette-drawer-head">
+        <h2 id="gazetteDrawerTitle">公報文字</h2>
+        <button type="button" class="secondary" data-close-gazette>關閉</button>
+      </div>
+      <div id="gazetteDrawerText" class="gazette-drawer-text"></div>
+    </section>
+  `;
+  drawer.addEventListener("click", (event) => {
+    if (!event.target.closest("[data-close-gazette]")) return;
+    closeGazetteDrawer();
+  });
+  document.body.append(drawer);
+  return drawer;
+}
+
+function showGazetteDrawer(title, content) {
+  const drawer = ensureGazetteDrawer();
+  document.querySelector("#gazetteDrawerTitle").textContent = title;
+  document.querySelector("#gazetteDrawerText").textContent = content || "沒有公報文字";
+  drawer.hidden = false;
+  document.body.classList.add("drawer-open");
+}
+
+function closeGazetteDrawer() {
+  const drawer = document.querySelector("#gazetteTextDrawer");
+  if (drawer) drawer.hidden = true;
+  document.body.classList.remove("drawer-open");
+}
+
+function appendGazetteTextButton(container, content, label = "公報文字") {
   if (!content) return;
-  const details = document.createElement("details");
-  details.className = "gazette-text";
-  const summary = document.createElement("summary");
-  summary.textContent = label;
-  const text = document.createElement("div");
-  text.textContent = content;
-  details.append(summary, text);
-  container.append(details);
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "gazette-text-button secondary";
+  button.textContent = `看${label}`;
+  button.addEventListener("click", (event) => {
+    event.stopPropagation();
+    showGazetteDrawer(label, content);
+  });
+  container.append(button);
 }
 
 function matchingRows() {
@@ -471,7 +511,7 @@ function renderPairingPanel() {
     const span = document.createElement("span");
     span.textContent = splitPreview(row.content || splitUrls(row.pdf).join("\n"), 42, 32).head;
     card.append(image, span);
-    appendGazetteText(card, row.content);
+    appendGazetteTextButton(card, row.content);
     imageList.append(card);
   }
 
@@ -487,7 +527,7 @@ function renderPairingPanel() {
       const span = document.createElement("span");
       span.textContent = `原本配到 proposal_ID ${row.proposal_ID || ""}\n${url}`;
       card.append(image, span);
-      appendGazetteText(card, row.content, "原配對文字");
+      appendGazetteTextButton(card, row.content, "原配對文字");
       imageList.append(card);
     });
   }
@@ -605,6 +645,7 @@ function csvEscape(value) {
 }
 
 async function init() {
+  ensureGazetteDrawer();
   const response = await fetch(dataPath);
   const payload = await response.json();
   if (initialMeeting) {
@@ -676,6 +717,9 @@ async function init() {
     state.edits = {};
     localStorage.removeItem(storageKey);
     renderRows();
+  });
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") closeGazetteDrawer();
   });
 
   updateSummary();
