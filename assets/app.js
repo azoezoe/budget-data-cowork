@@ -240,7 +240,7 @@ function renderRows() {
     node.querySelector(".done-input").checked = Boolean(row.done || row.status === "ok");
     node.querySelector(".note-input").value = row.note || "";
     node.querySelector(".content-text").textContent = row.content || "";
-    node.querySelector(".wrong-image-button").hidden = !row.dataset.endsWith("_matched") || splitUrls(row.pdf).length < 2;
+    node.querySelector(".wrong-image-button").hidden = !row.dataset.endsWith("_matched") || !splitUrls(row.pdf).length;
     renderImages(node.querySelector(".image-pane"), row, {
       onWrongImage: row.dataset.endsWith("_matched") ? (url) => moveWrongImageToPool(raw, url) : null,
     });
