@@ -37,8 +37,25 @@ function currentReview(row) {
     fullNameEdited: false,
     resultDirty: false,
     resultEdited: false,
+    mergedFreeze: false,
     ...(currentEdit(row).review || {}),
   };
+}
+
+function caseIdList(value) {
+  return [...new Set(String(value || "").split(",").map((item) => item.trim()).filter(Boolean))];
+}
+
+function mergedCaseOptions(row) {
+  return caseIdList(currentFields(row).case_ids);
+}
+
+function selectedMergedCaseIds(row) {
+  return caseIdList(currentFields(row)["併案子提案"]);
+}
+
+function isMergedFreeze(row) {
+  return currentReview(row).mergedFreeze || selectedMergedCaseIds(row).length > 0;
 }
 
 function saveState() {
@@ -133,6 +150,12 @@ function issueList(row) {
   }
   if ((fields.action || "").includes("凍結") && !fields.frozen) {
     issues.push({ code: "frozen", label: "缺 frozen", detail: "凍結案應確認凍結金額", tone: "critical", blocking: false });
+  }
+  if (isMergedFreeze(row) && !(fields.action || "").includes("凍結")) {
+    issues.push({ code: "merged-action", label: "併案凍結的 action 不符", detail: "action 必須包含凍結", tone: "critical", blocking: true });
+  }
+  if (isMergedFreeze(row) && selectedMergedCaseIds(row).length === 0) {
+    issues.push({ code: "merged-cases", label: "尚未選被併案案號", detail: "至少選取一個被併案的案子", tone: "critical", blocking: true });
   }
   if (fields.extract_notes) {
     issues.push({ code: "extract", label: "AI 提醒", detail: fields.extract_notes, tone: "info", blocking: false });
@@ -278,6 +301,88 @@ function renderSummary() {
   document.querySelector("#fixYears").disabled = yearIssues === 0;
 }
 
+function ensureMergedFreezeControls() {
+  if (document.querySelector("#mergedFreeze")) return;
+  const amounts = document.querySelector(".field-grid.amounts");
+  if (!amounts) return;
+
+  const section = document.createElement("section");
+  section.className = "merged-freeze-section";
+
+  const toggleLabel = document.createElement("label");
+  toggleLabel.className = "merged-freeze-toggle";
+  const toggle = document.createElement("input");
+  toggle.id = "mergedFreeze";
+  toggle.type = "checkbox";
+  const toggleText = document.createElement("span");
+  toggleText.textContent = "這是併案凍結";
+  toggleLabel.append(toggle, toggleText);
+
+  const panel = document.createElement("div");
+  panel.id = "mergedFreezePanel";
+  panel.className = "merged-freeze-panel";
+  panel.hidden = true;
+
+  const toolbar = document.createElement("div");
+  toolbar.className = "merged-case-toolbar";
+  const title = document.createElement("strong");
+  title.textContent = "被併案的案子";
+  const commands = document.createElement("div");
+  commands.className = "merged-case-commands";
+  const selectAll = document.createElement("button");
+  selectAll.id = "selectAllMergedCases";
+  selectAll.type = "button";
+  selectAll.textContent = "全選";
+  const clear = document.createElement("button");
+  clear.id = "clearMergedCases";
+  clear.type = "button";
+  clear.textContent = "清除";
+  commands.append(selectAll, clear);
+  toolbar.append(title, commands);
+
+  const options = document.createElement("div");
+  options.id = "mergedCaseOptions";
+  options.className = "merged-case-options";
+  options.setAttribute("role", "group");
+  options.setAttribute("aria-label", "被併案的案子");
+  const hint = document.createElement("p");
+  hint.id = "mergedCaseHint";
+  hint.className = "merged-case-hint";
+
+  panel.append(toolbar, options, hint);
+  section.append(toggleLabel, panel);
+  amounts.before(section);
+}
+
+function renderMergedFreeze(row) {
+  const enabled = isMergedFreeze(row);
+  const options = mergedCaseOptions(row);
+  const selected = new Set(selectedMergedCaseIds(row));
+  const toggle = document.querySelector("#mergedFreeze");
+  const panel = document.querySelector("#mergedFreezePanel");
+  const container = document.querySelector("#mergedCaseOptions");
+  const hint = document.querySelector("#mergedCaseHint");
+
+  toggle.checked = enabled;
+  panel.hidden = !enabled;
+  container.textContent = "";
+  for (const caseId of options) {
+    const label = document.createElement("label");
+    label.className = "merged-case-option";
+    const input = document.createElement("input");
+    input.type = "checkbox";
+    input.value = caseId;
+    input.checked = selected.has(caseId);
+    const text = document.createElement("span");
+    text.textContent = `案 ${caseId}`;
+    label.append(input, text);
+    container.append(label);
+  }
+  hint.textContent = options.length ? `${selected.size} / ${options.length} 筆已選` : "此筆沒有可選的 case_ids";
+  document.querySelector("#selectAllMergedCases").disabled = options.length === 0 || selected.size === options.length;
+  document.querySelector("#clearMergedCases").disabled = selected.size === 0;
+}
+
 function renderCurrent() {
   const row = selectedRow();
   if (!row) return;
@@ -327,6 +432,7 @@ function renderCurrent() {
   for (const preview of document.querySelectorAll("[data-amount-preview]")) {
     preview.textContent = formatAmount(fields[preview.dataset.amountPreview]);
   }
+  renderMergedFreeze(row);
 
   document.querySelector("#reviewNote").value = review.note || "";
   for (const button of document.querySelectorAll("#reviewDecisionControl button")) {
@@ -589,6 +695,8 @@ function exportRows() {
     done: currentReview(row).done,
     delete: currentReview(row).decision === "delete",
     flagged: currentReview(row).flagged,
+    merged_freeze: isMergedFreeze(row),
+    merged_case_ids: currentFields(row)["併案子提案"] || "",
     correction_note: currentReview(row).correction,
     review_note: currentReview(row).note,
     fields: currentFields(row),
@@ -637,6 +745,32 @@ function bindEvents() {
       render();
     });
   }
+  document.querySelector("#mergedFreeze").addEventListener("change", (event) => {
+    const row = selectedRow();
+    savePatch(row, { review: { mergedFreeze: event.target.checked, done: false } });
+    if (!event.target.checked) setField(row, "併案子提案", "");
+    render();
+  });
+  document.querySelector("#mergedCaseOptions").addEventListener("change", (event) => {
+    if (!event.target.matches('input[type="checkbox"]')) return;
+    const row = selectedRow();
+    const selected = new Set(selectedMergedCaseIds(row));
+    if (event.target.checked) selected.add(event.target.value);
+    else selected.delete(event.target.value);
+    const ordered = mergedCaseOptions(row).filter((caseId) => selected.has(caseId));
+    savePatch(row, { fields: { "併案子提案": ordered.join(",") }, review: { mergedFreeze: true, done: false } });
+    renderCurrent();
+  });
+  document.querySelector("#selectAllMergedCases").addEventListener("click", () => {
+    const row = selectedRow();
+    savePatch(row, { fields: { "併案子提案": mergedCaseOptions(row).join(",") }, review: { mergedFreeze: true, done: false } });
+    renderCurrent();
+  });
+  document.querySelector("#clearMergedCases").addEventListener("click", () => {
+    const row = selectedRow();
+    savePatch(row, { fields: { "併案子提案": "" }, review: { mergedFreeze: true, done: false } });
+    renderCurrent();
+  });
   for (const button of document.querySelectorAll("#reviewDecisionControl button")) {
     button.addEventListener("click", () => {
       const row = selectedRow();
@@ -698,7 +832,7 @@ function bindEvents() {
     download(`${exportBaseName()}.jsonl`, `${exportRows().map((row) => JSON.stringify(row)).join("\n")}\n`, "application/x-ndjson;charset=utf-8");
   });
   document.querySelector("#downloadCsv").addEventListener("click", () => {
-    const reviewHeaders = ["row_id", "source_row", "added", "reviewer", "review_status", "review_decision", "done", "delete", "flagged", "correction_note", "review_note"];
+    const reviewHeaders = ["row_id", "source_row", "added", "reviewer", "review_status", "review_decision", "done", "delete", "flagged", "merged_freeze", "merged_case_ids", "correction_note", "review_note"];
     const headers = [...state.payload.headers, ...reviewHeaders];
     const rows = exportRows().map((row) => {
       const flat = { ...row.fields, ...Object.fromEntries(reviewHeaders.map((header) => [header, row[header]])) };
@@ -773,6 +907,7 @@ async function init() {
     checklist.append(li);
   }
 
+  ensureMergedFreezeControls();
   bindEvents();
   render();
   window.lucide?.createIcons();

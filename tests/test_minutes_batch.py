@@ -29,7 +29,7 @@ class MinutesBatchTest(unittest.TestCase):
                 self.assertTrue(source.exists())
                 page_text = page.read_text(encoding="utf-8")
                 self.assertIn(data.name, page_text)
-                self.assertIn("minutes.js?v=20260806-3", page_text)
+                self.assertIn("minutes.js?v=20260807-1", page_text)
                 payload = json.loads(data.read_text(encoding="utf-8"))
                 self.assertEqual(meeting["proposal_count"], len(payload["rows"]))
                 self.assertEqual(meeting["meeting_code"], payload["dataset"]["meeting_code"])
@@ -75,6 +75,23 @@ class MinutesBatchTest(unittest.TestCase):
         self.assertEqual(first["fields"]["result"], "")
         script = (ROOT / "assets" / "minutes.js").read_text(encoding="utf-8")
         self.assertIn('if (review.decision === "delete") return [];', script)
+
+    def test_merged_freeze_uses_case_ids_and_exports_selection(self):
+        script = (ROOT / "assets" / "minutes.js").read_text(encoding="utf-8")
+        for marker in (
+            "mergedFreeze",
+            "mergedCaseOptions",
+            "selectedMergedCaseIds",
+            'fields: { "併案子提案": ordered.join(",") }',
+            "merged_freeze: isMergedFreeze(row)",
+            'merged_case_ids: currentFields(row)["併案子提案"]',
+        ):
+            self.assertIn(marker, script)
+
+        payload = json.loads((ROOT / "data" / "minutes-review-42.json").read_text(encoding="utf-8"))
+        merged_row = payload["rows"][2]["fields"]
+        self.assertEqual(merged_row["case_ids"], "4,6,7,8,9,10")
+        self.assertIn("併案子提案", merged_row)
 
 
 if __name__ == "__main__":
