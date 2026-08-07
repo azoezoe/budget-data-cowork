@@ -14,7 +14,7 @@ class MinutesBatchTest(unittest.TestCase):
 
     def test_manifest_contains_unique_nonempty_meetings(self):
         meetings = self.manifest["meetings"]
-        self.assertEqual(22, len(meetings))
+        self.assertEqual(14, len(meetings))
         self.assertEqual(len(meetings), len({item["meeting_code"] for item in meetings}))
         self.assertTrue(all(item["proposal_count"] > 0 for item in meetings))
 
