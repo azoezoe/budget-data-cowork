@@ -29,7 +29,7 @@ class MinutesBatchTest(unittest.TestCase):
                 self.assertTrue(source.exists())
                 page_text = page.read_text(encoding="utf-8")
                 self.assertIn(data.name, page_text)
-                self.assertIn("minutes.js?v=20260807-1", page_text)
+                self.assertIn("minutes.js?v=20260807-2", page_text)
                 payload = json.loads(data.read_text(encoding="utf-8"))
                 self.assertEqual(meeting["proposal_count"], len(payload["rows"]))
                 self.assertEqual(meeting["meeting_code"], payload["dataset"]["meeting_code"])
@@ -76,17 +76,25 @@ class MinutesBatchTest(unittest.TestCase):
         script = (ROOT / "assets" / "minutes.js").read_text(encoding="utf-8")
         self.assertIn('if (review.decision === "delete") return [];', script)
 
-    def test_merged_freeze_uses_case_ids_and_exports_selection(self):
+    def test_merged_freeze_selects_cases_from_left_queue(self):
         script = (ROOT / "assets" / "minutes.js").read_text(encoding="utf-8")
         for marker in (
             "mergedFreeze",
-            "mergedCaseOptions",
+            "mergedSelectionMode",
+            "mergedSelectionTargetKey",
+            "rowCaseIds",
+            "toggleMergedCandidate",
+            "orderedMeetingCaseIds",
             "selectedMergedCaseIds",
-            'fields: { "併案子提案": ordered.join(",") }',
+            'if (state.mergedSelectionMode) toggleMergedCandidate(row);',
             "merged_freeze: isMergedFreeze(row)",
             'merged_case_ids: currentFields(row)["併案子提案"]',
         ):
             self.assertIn(marker, script)
+
+        styles = (ROOT / "assets" / "minutes.css").read_text(encoding="utf-8")
+        self.assertIn(".merged-selection-banner", styles)
+        self.assertIn(".row-item.merge-candidate.merge-selected", styles)
 
         payload = json.loads((ROOT / "data" / "minutes-review-42.json").read_text(encoding="utf-8"))
         merged_row = payload["rows"][2]["fields"]

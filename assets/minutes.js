@@ -9,6 +9,8 @@ const state = {
   reviewer: "",
   storageKey: "",
   sourceSelection: "",
+  mergedSelectionMode: false,
+  mergedSelectionTargetKey: "",
 };
 
 const dataPath = window.MINUTES_REVIEW_DATA || "data/minutes-review.json";
@@ -46,8 +48,11 @@ function caseIdList(value) {
   return [...new Set(String(value || "").split(",").map((item) => item.trim()).filter(Boolean))];
 }
 
-function mergedCaseOptions(row) {
-  return caseIdList(currentFields(row).case_ids);
+function rowCaseIds(row) {
+  const fields = currentFields(row);
+  const caseIds = caseIdList(fields.case_ids);
+  if (caseIds.length) return caseIds;
+  return caseIdList(String(fields["序號"] || "").replace(/[\s、，]+/g, ","));
 }
 
 function selectedMergedCaseIds(row) {
@@ -56,6 +61,40 @@ function selectedMergedCaseIds(row) {
 
 function isMergedFreeze(row) {
   return currentReview(row).mergedFreeze || selectedMergedCaseIds(row).length > 0;
+}
+
+function orderedMeetingCaseIds(selected) {
+  const ordered = [];
+  for (const row of state.rows) {
+    for (const caseId of rowCaseIds(row)) {
+      if (selected.has(caseId) && !ordered.includes(caseId)) ordered.push(caseId);
+    }
+  }
+  for (const caseId of selected) {
+    if (!ordered.includes(caseId)) ordered.push(caseId);
+  }
+  return ordered;
+}
+
+function mergedSelectionTarget() {
+  return state.rows.find((row) => rowKey(row) === state.mergedSelectionTargetKey) || selectedRow();
+}
+
+function toggleMergedCandidate(row) {
+  const target = mergedSelectionTarget();
+  const candidateIds = rowCaseIds(row);
+  if (!target || !candidateIds.length) return;
+  const selected = new Set(selectedMergedCaseIds(target));
+  const allSelected = candidateIds.every((caseId) => selected.has(caseId));
+  for (const caseId of candidateIds) {
+    if (allSelected) selected.delete(caseId);
+    else selected.add(caseId);
+  }
+  savePatch(target, {
+    fields: { "併案子提案": orderedMeetingCaseIds(selected).join(",") },
+    review: { mergedFreeze: true, done: false },
+  });
+  render();
 }
 
 function saveState() {
@@ -183,9 +222,11 @@ function visibleRows() {
     const fields = currentFields(row);
     const status = rowStatus(row);
     const issues = issueList(row);
-    if (state.filter === "pending" && status !== "pending" && status !== "flagged") return false;
-    if (state.filter === "amend" && status !== "amend") return false;
-    if (state.filter === "done" && ["pending", "flagged"].includes(status)) return false;
+    if (!state.mergedSelectionMode) {
+      if (state.filter === "pending" && status !== "pending" && status !== "flagged") return false;
+      if (state.filter === "amend" && status !== "amend") return false;
+      if (state.filter === "done" && ["pending", "flagged"].includes(status)) return false;
+    }
     if (!query) return true;
     return [fields["序號"], fields.full_name, fields["內容"], fields.action, fields.result]
       .join("\n")
@@ -240,14 +281,38 @@ function appendHighlightedText(container, text) {
 function renderList() {
   const list = document.querySelector("#rowList");
   const rows = visibleRows();
+  const target = mergedSelectionTarget();
+  const mergedSelected = new Set(target ? selectedMergedCaseIds(target) : []);
   list.textContent = "";
+  list.classList.toggle("merged-selection-list", state.mergedSelectionMode);
+  document.querySelector(".queue-panel")?.classList.toggle("merged-selection-mode", state.mergedSelectionMode);
+  if (state.mergedSelectionMode) {
+    const banner = document.createElement("div");
+    banner.className = "merged-selection-banner";
+    const title = document.createElement("strong");
+    title.textContent = "選擇被併案的案子";
+    const count = document.createElement("span");
+    count.textContent = `已選 ${mergedSelected.size} 個案號`;
+    banner.append(title, count);
+    list.append(banner);
+  }
   for (const row of rows) {
     const fields = currentFields(row);
     const status = rowStatus(row);
     const issues = issueList(row);
+    const candidateIds = rowCaseIds(row);
+    const candidateSelected = candidateIds.length > 0 && candidateIds.every((caseId) => mergedSelected.has(caseId));
+    const candidatePartial = !candidateSelected && candidateIds.some((caseId) => mergedSelected.has(caseId));
     const button = document.createElement("button");
     button.type = "button";
     button.className = `row-item ${rowKey(row) === state.selectedKey ? "active" : ""} ${!["pending", "flagged"].includes(status) ? "done" : ""}`;
+    if (state.mergedSelectionMode) {
+      button.classList.add("merge-candidate");
+      button.classList.toggle("merge-selected", candidateSelected);
+      button.classList.toggle("merge-partial", candidatePartial);
+      button.setAttribute("aria-pressed", candidateSelected ? "true" : "false");
+      button.disabled = candidateIds.length === 0;
+    }
     button.dataset.key = rowKey(row);
 
     const index = document.createElement("span");
@@ -262,7 +327,10 @@ function renderList() {
     copy.append(strong, detail);
     const alert = document.createElement("span");
     alert.className = "row-alert";
-    if (status === "correct") {
+    if (state.mergedSelectionMode) {
+      alert.classList.add("merge-check");
+      alert.textContent = candidateSelected ? "✓" : candidatePartial ? "−" : candidateIds.length ? "+" : "無案號";
+    } else if (status === "correct") {
       alert.classList.add("complete");
       alert.textContent = "✓";
     } else if (status === "amend") {
@@ -278,7 +346,10 @@ function renderList() {
       alert.textContent = issues.length || "·";
     }
     button.append(index, copy, alert);
-    button.addEventListener("click", () => selectRow(row));
+    button.addEventListener("click", () => {
+      if (state.mergedSelectionMode) toggleMergedCandidate(row);
+      else selectRow(row);
+    });
     list.append(button);
   }
   if (!rows.length) {
@@ -329,58 +400,51 @@ function ensureMergedFreezeControls() {
   title.textContent = "被併案的案子";
   const commands = document.createElement("div");
   commands.className = "merged-case-commands";
-  const selectAll = document.createElement("button");
-  selectAll.id = "selectAllMergedCases";
-  selectAll.type = "button";
-  selectAll.textContent = "全選";
+  const select = document.createElement("button");
+  select.id = "selectMergedCases";
+  select.type = "button";
+  select.textContent = "從左側選取";
   const clear = document.createElement("button");
   clear.id = "clearMergedCases";
   clear.type = "button";
   clear.textContent = "清除";
-  commands.append(selectAll, clear);
+  commands.append(select, clear);
   toolbar.append(title, commands);
 
-  const options = document.createElement("div");
-  options.id = "mergedCaseOptions";
-  options.className = "merged-case-options";
-  options.setAttribute("role", "group");
-  options.setAttribute("aria-label", "被併案的案子");
+  const summary = document.createElement("div");
+  summary.id = "mergedCaseSummary";
+  summary.className = "merged-case-summary";
   const hint = document.createElement("p");
   hint.id = "mergedCaseHint";
   hint.className = "merged-case-hint";
 
-  panel.append(toolbar, options, hint);
+  panel.append(toolbar, summary, hint);
   section.append(toggleLabel, panel);
   amounts.before(section);
 }
 
 function renderMergedFreeze(row) {
   const enabled = isMergedFreeze(row);
-  const options = mergedCaseOptions(row);
-  const selected = new Set(selectedMergedCaseIds(row));
+  const selected = selectedMergedCaseIds(row);
   const toggle = document.querySelector("#mergedFreeze");
   const panel = document.querySelector("#mergedFreezePanel");
-  const container = document.querySelector("#mergedCaseOptions");
+  const summary = document.querySelector("#mergedCaseSummary");
   const hint = document.querySelector("#mergedCaseHint");
 
   toggle.checked = enabled;
   panel.hidden = !enabled;
-  container.textContent = "";
-  for (const caseId of options) {
-    const label = document.createElement("label");
-    label.className = "merged-case-option";
-    const input = document.createElement("input");
-    input.type = "checkbox";
-    input.value = caseId;
-    input.checked = selected.has(caseId);
-    const text = document.createElement("span");
-    text.textContent = `案 ${caseId}`;
-    label.append(input, text);
-    container.append(label);
+  summary.textContent = "";
+  for (const caseId of selected) {
+    const chip = document.createElement("span");
+    chip.textContent = `案 ${caseId}`;
+    summary.append(chip);
   }
-  hint.textContent = options.length ? `${selected.size} / ${options.length} 筆已選` : "此筆沒有可選的 case_ids";
-  document.querySelector("#selectAllMergedCases").disabled = options.length === 0 || selected.size === options.length;
-  document.querySelector("#clearMergedCases").disabled = selected.size === 0;
+  hint.textContent = selected.length ? `已選 ${selected.length} 個案號` : "尚未選取案子";
+  const select = document.querySelector("#selectMergedCases");
+  const selectingThisRow = state.mergedSelectionMode && state.mergedSelectionTargetKey === rowKey(row);
+  select.textContent = selectingThisRow ? "完成選取" : "從左側選取";
+  select.classList.toggle("active", selectingThisRow);
+  document.querySelector("#clearMergedCases").disabled = selected.length === 0;
 }
 
 function renderCurrent() {
@@ -446,8 +510,8 @@ function renderCurrent() {
 
   const previous = state.rows[position - 1];
   const next = state.rows[position + 1];
-  document.querySelector("#previousRow").disabled = !previous;
-  document.querySelector("#nextRow").disabled = !next;
+  document.querySelector("#previousRow").disabled = !previous || state.mergedSelectionMode;
+  document.querySelector("#nextRow").disabled = !next || state.mergedSelectionMode;
 }
 
 function normalizeSourceText(value) {
@@ -748,28 +812,27 @@ function bindEvents() {
   document.querySelector("#mergedFreeze").addEventListener("change", (event) => {
     const row = selectedRow();
     savePatch(row, { review: { mergedFreeze: event.target.checked, done: false } });
-    if (!event.target.checked) setField(row, "併案子提案", "");
+    if (event.target.checked) {
+      state.mergedSelectionMode = true;
+      state.mergedSelectionTargetKey = rowKey(row);
+    } else {
+      setField(row, "併案子提案", "");
+      state.mergedSelectionMode = false;
+      state.mergedSelectionTargetKey = "";
+    }
     render();
   });
-  document.querySelector("#mergedCaseOptions").addEventListener("change", (event) => {
-    if (!event.target.matches('input[type="checkbox"]')) return;
+  document.querySelector("#selectMergedCases").addEventListener("click", () => {
     const row = selectedRow();
-    const selected = new Set(selectedMergedCaseIds(row));
-    if (event.target.checked) selected.add(event.target.value);
-    else selected.delete(event.target.value);
-    const ordered = mergedCaseOptions(row).filter((caseId) => selected.has(caseId));
-    savePatch(row, { fields: { "併案子提案": ordered.join(",") }, review: { mergedFreeze: true, done: false } });
-    renderCurrent();
-  });
-  document.querySelector("#selectAllMergedCases").addEventListener("click", () => {
-    const row = selectedRow();
-    savePatch(row, { fields: { "併案子提案": mergedCaseOptions(row).join(",") }, review: { mergedFreeze: true, done: false } });
-    renderCurrent();
+    const selectingThisRow = state.mergedSelectionMode && state.mergedSelectionTargetKey === rowKey(row);
+    state.mergedSelectionMode = !selectingThisRow;
+    state.mergedSelectionTargetKey = selectingThisRow ? "" : rowKey(row);
+    render();
   });
   document.querySelector("#clearMergedCases").addEventListener("click", () => {
-    const row = selectedRow();
+    const row = mergedSelectionTarget();
     savePatch(row, { fields: { "併案子提案": "" }, review: { mergedFreeze: true, done: false } });
-    renderCurrent();
+    render();
   });
   for (const button of document.querySelectorAll("#reviewDecisionControl button")) {
     button.addEventListener("click", () => {
