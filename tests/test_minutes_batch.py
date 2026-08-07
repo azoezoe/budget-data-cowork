@@ -29,7 +29,7 @@ class MinutesBatchTest(unittest.TestCase):
                 self.assertTrue(source.exists())
                 page_text = page.read_text(encoding="utf-8")
                 self.assertIn(data.name, page_text)
-                self.assertIn("minutes.js?v=20260807-2", page_text)
+                self.assertIn("minutes.js?v=20260807-3", page_text)
                 payload = json.loads(data.read_text(encoding="utf-8"))
                 self.assertEqual(meeting["proposal_count"], len(payload["rows"]))
                 self.assertEqual(meeting["meeting_code"], payload["dataset"]["meeting_code"])
@@ -100,6 +100,16 @@ class MinutesBatchTest(unittest.TestCase):
         merged_row = payload["rows"][2]["fields"]
         self.assertEqual(merged_row["case_ids"], "4,6,7,8,9,10")
         self.assertIn("併案子提案", merged_row)
+
+    def test_content_with_merge_keyword_gets_review_reminder(self):
+        script = (ROOT / "assets" / "minutes.js").read_text(encoding="utf-8")
+        self.assertIn('(fields["內容"] || "").includes("合併")', script)
+        self.assertIn('label: "案由提到合併"', script)
+        self.assertIn('code: "possible-merge"', script)
+
+        payload = json.loads((ROOT / "data" / "minutes-review-40.json").read_text(encoding="utf-8"))
+        matching = [row for row in payload["rows"] if "合併" in row["fields"]["內容"]]
+        self.assertTrue(matching)
 
 
 if __name__ == "__main__":

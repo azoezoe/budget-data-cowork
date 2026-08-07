@@ -196,6 +196,9 @@ function issueList(row) {
   if (isMergedFreeze(row) && selectedMergedCaseIds(row).length === 0) {
     issues.push({ code: "merged-cases", label: "尚未選被併案案號", detail: "至少選取一個被併案的案子", tone: "critical", blocking: true });
   }
+  if ((fields["內容"] || "").includes("合併") && !isMergedFreeze(row)) {
+    issues.push({ code: "possible-merge", label: "案由提到合併", detail: "檢查是否為併案凍結並選取被併案的案子", tone: "warning", blocking: false });
+  }
   if (fields.extract_notes) {
     issues.push({ code: "extract", label: "AI 提醒", detail: fields.extract_notes, tone: "info", blocking: false });
   }
