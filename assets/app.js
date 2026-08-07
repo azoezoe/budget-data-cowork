@@ -17,7 +17,9 @@ const statusLabels = {
 };
 
 const storageKey = "budget-gazette-review-edits:v1";
-const dataPath = window.BUDGET_REVIEW_DATA || "data/gazette-review.json";
+const dataVersion = window.BUDGET_REVIEW_VERSION || "20260807-8d86c95";
+const rawDataPath = window.BUDGET_REVIEW_DATA || "data/gazette-review.json";
+const dataPath = `${rawDataPath}${rawDataPath.includes("?") ? "&" : "?"}v=${encodeURIComponent(dataVersion)}`;
 const initialMeeting = window.BUDGET_REVIEW_MEETING || "";
 
 function splitUrls(value) {

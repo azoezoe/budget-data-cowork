@@ -150,9 +150,10 @@ def main() -> None:
 
     <script>
       window.BUDGET_REVIEW_DATA = "../data/gazette-review.json";
+      window.BUDGET_REVIEW_VERSION = "20260807-8d86c95";
       window.BUDGET_REVIEW_MEETING = "{html.escape(group['base'])}";
     </script>
-    <script src="../assets/app.js?v=20260806-11"></script>
+    <script src="../assets/app.js?v=20260807-1"></script>
   </body>
 </html>
 """
