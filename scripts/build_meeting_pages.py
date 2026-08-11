@@ -35,6 +35,10 @@ def main() -> None:
         )
 
     OUTPUT_DIR.mkdir(exist_ok=True)
+    active_pages = {f"{group['base']}.html" for group in groups.values()}
+    for existing in OUTPUT_DIR.glob("*.html"):
+        if existing.name not in active_pages:
+            existing.unlink()
     for group in groups.values():
         title = f"{group['date']} {group['committee']} 公報校對"
         page = f"""<!doctype html>
@@ -150,7 +154,7 @@ def main() -> None:
 
     <script>
       window.BUDGET_REVIEW_DATA = "../data/gazette-review.json";
-      window.BUDGET_REVIEW_VERSION = "20260807-liveproposal";
+      window.BUDGET_REVIEW_VERSION = "20260811-gazette-full";
       window.BUDGET_REVIEW_MEETING = "{html.escape(group['base'])}";
     </script>
     <script src="../assets/app.js?v=20260807-1"></script>
